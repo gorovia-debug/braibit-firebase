@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BraiBit - IES Luis Braille Blockchain Network</title>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(147, 51, 234, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(147, 51, 234, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 min-h-screen">
+    <div id="app"></div>
+
+    <script type="module">
+        // ============================================
+        // CONFIGURACIÓN FIREBASE
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCikAEptyqDRjUSdSgd7o6mxaFvfK91u-Y",
+            authDomain: "moneda-social-4692b.firebaseapp.com",
+            databaseURL: "https://moneda-social-4692b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "moneda-social-4692b",
+            storageBucket: "moneda-social-4692b.firebasestorage.app",
+            messagingSenderId: "893005212499",
+            appId: "1:893005212499:web:93cd8280422e43acb50fa6"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // ============================================
+        // UTILIDADES
+        // ============================================
+        const generateEthAddress = () => {
+            const chars = '0123456789abcdef';
+            let address = '0x';
+            for (let i = 0; i < 40; i++) {
+                address += chars[Math.floor(Math.random() * chars.length)];
+            }
+            return address;
+        };
+
+        const generateTxHash = () => {
+            const chars = '0123456789abcdef';
+            let hash = '0x';
+            for (let i = 0; i < 64; i++) {
+                hash += chars[Math.floor(Math.random() * chars.length)];
+            }
+            return hash;
+        };
+
+        const calculateGasFee = (amount) => Math.max(0.1, amount * 0.001);
+        const formatAddress = (address) => address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+        const formatNumber = (num) => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+        const formatDate = (date) => new Date(date).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+        const CURRENCY_NAME = "BraiBit";
+        const CURRENCY_SYMBOL = "BB";
+
+        // ============================================
+        // DATOS INICIALES
+        // ============================================
+        const initializeData = async () => {
+            console.log('🔥 Inicializando datos en Firebase...');
+
+            // Verificar si ya hay datos
+            const snapshot = await db.ref('initialized').once('value');
+            if (snapshot.val()) {
+                console.log('✅ Datos ya inicializados');
+                return;
+            }
+
+            // TUTORES
+            const tutors = [
+                { id: 'tutor1', name: 'Rocío', email: 'rocio@iesluisbraille.edu', password: 'Rocio2025!', role: 'tutor', tokens: 10000, ethAddress: generateEthAddress() },
+                { id: 'tutor2', name: 'Elkin', email: 'elkin@iesluisbraille.edu', password: 'Elkin2025!', role: 'tutor', tokens: 10000, ethAddress: generateEthAddress() },
+                { id: 'tutor3', name: 'Gonzalo', email: 'gonzalo@iesluisbraille.edu', password: 'Gonzalo2025!', role: 'tutor', tokens: 10000, ethAddress: generateEthAddress() },
+                { id: 'tutor4', name: 'Margarita', email: 'margarita@iesluisbraille.edu', password: 'Margarita2025!', role: 'tutor', tokens: 10000, ethAddress: generateEthAddress() },
+                { id: 'tutor5', name: 'Ana', email: 'ana@iesluisbraille.edu', password: 'Ana2025!', role: 'tutor', tokens: 10000, ethAddress: generateEthAddress() },
+                { id: 'tutor6', name: 'Miriam', email: 'miriam@iesluisbraille.edu', password: 'Miriam2025!', role: 'tutor', tokens: 10000, ethAddress: generateEthAddress() }
+            ];
+
+            // ALUMNOS (131 completos)
+            const students = [];
+            
+            // AD-1: 17 alumnos
+            for (let i = 1; i <= 17; i++) {
+                students.push({
+                    id: `ad1_${i}`,
+                    nick: `BRAIBIT-AD1-${String(i).padStart(3, '0')}`,
+                    name: `Alumno ${i} AD-1`,
+                    password: `ad1.${String(i).padStart(3, '0')}`,
+                    role: 'student',
+                    tokens: 0,
+                    class: 'AD-1',
+                    ethAddress: generateEthAddress()
+                });
+            }
+
+            // AD-2: 14 alumnos
+            for (let i = 1; i <= 14; i++) {
+                students.push({
+                    id: `ad2_${i}`,
+                    nick: `BRAIBIT-AD2-${String(i).padStart(3, '0')}`,
+                    name: `Alumno ${i} AD-2`,
+                    password: `ad2.${String(i).padStart(3, '0')}`,
+                    role: 'student',
+                    tokens: 0,
+                    class: 'AD-2',
+                    ethAddress: generateEthAddress()
+                });
+            }
+
+            // DAW-1: 25 alumnos
+            for (let i = 1; i <= 25; i++) {
+                students.push({
+                    id: `daw1_${i}`,
+                    nick: `BRAIBIT-DAW1-${String(i).padStart(3, '0')}`,
+                    name: `Alumno ${i} DAW-1`,
+                    password: `daw1.${String(i).padStart(3, '0')}`,
+                    role: 'student',
+                    tokens: 0,
+                    class: 'DAW-1',
+                    ethAddress: generateEthAddress()
+                });
+            }
+
+            // AC-1: 26 alumnos
+            for (let i = 1; i <= 26; i++) {
+                students.push({
+                    id: `ac1_${i}`,
+                    nick: `BRAIBIT-AC1-${String(i).padStart(3, '0')}`,
+                    name: `Alumno ${i} AC-1`,
+                    password: `ac1.${String(i).padStart(3, '0')}`,
+                    role: 'student',
+                    tokens: 0,
+                    class: 'AC-1',
+                    ethAddress: generateEthAddress()
+                });
+            }
+
+            // AC-2: 26 alumnos
+            for (let i = 1; i <= 26; i++) {
+                students.push({
+                    id: `ac2_${i}`,
+                    nick: `BRAIBIT-AC2-${String(i).padStart(3, '0')}`,
+                    name: `Alumno ${i} AC-2`,
+                    password: `ac2.${String(i).padStart(3, '0')}`,
+                    role: 'student',
+                    tokens: 0,
+                    class: 'AC-2',
+                    ethAddress: generateEthAddress()
+                });
+            }
+
+            // CI-2: 23 alumnos
+            for (let i = 1; i <= 23; i++) {
+                students.push({
+                    id: `ci2_${i}`,
+                    nick: `BRAIBIT-CI2-${String(i).padStart(3, '0')}`,
+                    name: `Alumno ${i} CI-2`,
+                    password: `ci2.${String(i).padStart(3, '0')}`,
+                    role: 'student',
+                    tokens: 0,
+                    class: 'CI-2',
+                    ethAddress: generateEthAddress()
+                });
+            }
+
+            // TAREAS
+            const tasks = [
+                { id: 'task1', name: 'Ayudar en biblioteca', reward: 50, category: 'Servicio' },
+                { id: 'task2', name: 'Tutoría a compañeros', reward: 100, category: 'Educativo' },
+                { id: 'task3', name: 'Limpieza espacios comunes', reward: 30, category: 'Servicio' },
+                { id: 'task4', name: 'Organizar evento escolar', reward: 150, category: 'Organización' },
+                { id: 'task5', name: 'Proyecto de reciclaje', reward: 200, category: 'Medioambiental' },
+                { id: 'task6', name: 'Apoyo actividades deportivas', reward: 75, category: 'Deportivo' },
+                { id: 'task7', name: 'Creación material educativo', reward: 120, category: 'Educativo' },
+                { id: 'task8', name: 'Mediación entre compañeros', reward: 80, category: 'Social' },
+                { id: 'task9', name: 'Modo Sofá', reward: 25, category: 'Participación' },
+                { id: 'task10', name: 'Modo Mochila', reward: 75, category: 'Participación' },
+                { id: 'task11', name: 'Modo Escalada', reward: 150, category: 'Participación' }
+            ];
+
+            // GRUPOS
+            const groups = [
+                { id: 'group1', name: 'AD-1', color: '#fbbf24' },
+                { id: 'group2', name: 'AD-2', color: '#60a5fa' },
+                { id: 'group3', name: 'DAW-1', color: '#34d399' },
+                { id: 'group4', name: 'AC-1', color: '#f472b6' },
+                { id: 'group5', name: 'AC-2', color: '#a78bfa' },
+                { id: 'group6', name: 'CI-2', color: '#fb923c' }
+            ];
+
+            // Guardar en Firebase
+            try {
+                await db.ref('users').set(
+                    [...tutors, ...students].reduce((acc, user) => {
+                        acc[user.id] = user;
+                        return acc;
+                    }, {})
+                );
+
+                await db.ref('tasks').set(
+                    tasks.reduce((acc, task) => {
+                        acc[task.id] = task;
+                        return acc;
+                    }, {})
+                );
+
+                await db.ref('groups').set(
+                    groups.reduce((acc, group) => {
+                        acc[group.id] = group;
+                        return acc;
+                    }, {})
+                );
+
+                await db.ref('initialized').set(true);
+                console.log('✅ Datos inicializados correctamente');
+            } catch (error) {
+                console.error('❌ Error al inicializar datos:', error);
+            }
+        };
+
+        // ============================================
+        // APLICACIÓN PRINCIPAL
+        // ============================================
+        class BraiBitApp {
+            constructor() {
+                this.currentUser = null;
+                this.users = [];
+                this.tasks = [];
+                this.groups = [];
+                this.transactions = [];
+                this.syncStatus = 'connecting';
+                this.init();
+            }
+
+            async init() {
+                await initializeData();
+                this.setupFirebaseListeners();
+                this.render();
+            }
+
+            setupFirebaseListeners() {
+                // Usuarios
+                db.ref('users').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.users = data ? Object.values(data) : [];
+                    this.render();
+                });
+
+                // Tareas
+                db.ref('tasks').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.tasks = data ? Object.values(data) : [];
+                    this.render();
+                });
+
+                // Grupos
+                db.ref('groups').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.groups = data ? Object.values(data) : [];
+                    this.render();
+                });
+
+                // Transacciones
+                db.ref('transactions').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    this.transactions = data ? Object.values(data).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) : [];
+                    this.render();
+                });
+
+                // Estado de conexión
+                db.ref('.info/connected').on('value', (snapshot) => {
+                    this.syncStatus = snapshot.val() ? 'connected' : 'disconnected';
+                    this.render();
+                });
+            }
+
+            async login(userType, credentials) {
+                if (userType === 'tutor') {
+                    const tutor = this.users.find(u => u.role === 'tutor' && u.email === credentials.email);
+                    if (!tutor || tutor.password !== credentials.password) {
+                        alert('❌ Credenciales incorrectas');
+                        return;
+                    }
+                    this.currentUser = tutor;
+                } else {
+                    const student = this.users.find(u => u.role === 'student' && u.nick === credentials.nick);
+                    if (!student || student.password !== credentials.password) {
+                        alert('❌ Credenciales incorrectas');
+                        return;
+                    }
+                    this.currentUser = student;
+                }
+                this.render();
+            }
+
+            logout() {
+                this.currentUser = null;
+                this.render();
+            }
+
+            async assignTask(studentId, taskId) {
+                const student = this.users.find(u => u.id === studentId);
+                const task = this.tasks.find(t => t.id === taskId);
+                
+                if (!student || !task) return;
+
+                const gasFee = calculateGasFee(task.reward);
+                const netAmount = task.reward - gasFee;
+
+                const transaction = {
+                    id: `tx_${Date.now()}`,
+                    hash: generateTxHash(),
+                    from: this.currentUser.ethAddress,
+                    to: student.ethAddress,
+                    fromName: this.currentUser.name,
+                    toName: student.name,
+                    amount: task.reward,
+                    gasFee: gasFee,
+                    type: 'task_reward',
+                    description: task.name,
+                    timestamp: new Date().toISOString(),
+                    status: 'confirmed',
+                    confirmations: 3
+                };
+
+                try {
+                    await db.ref(`users/${studentId}/tokens`).set(student.tokens + netAmount);
+                    await db.ref(`transactions/${transaction.id}`).set(transaction);
+                    alert(`✅ ${task.reward} ${CURRENCY_SYMBOL} asignados a ${student.name}`);
+                } catch (error) {
+                    alert('❌ Error al asignar tarea');
+                    console.error(error);
+                }
+            }
+
+            render() {
+                const app = document.getElementById('app');
+                
+                if (!this.currentUser) {
+                    app.innerHTML = this.renderLogin();
+                } else {
+                    app.innerHTML = this.renderDashboard();
+                }
+
+                this.attachEventListeners();
+            }
+
+            renderLogin() {
+                return `
+                    <div class="min-h-screen flex items-center justify-center p-4">
+                        <div class="bg-black/40 backdrop-blur-2xl rounded-3xl p-8 max-w-md w-full border border-purple-500/30">
+                            <div class="text-center mb-8">
+                                <div class="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-2xl inline-block mb-4">
+                                    <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h1 class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">BraiBit</h1>
+                                <p class="text-purple-300">IES Luis Braille Blockchain Network</p>
+                            </div>
+
+                            <div class="flex gap-2 mb-6">
+                                <button onclick="app.switchUserType('student')" id="btn-student" class="flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                                    🎓 Alumno/a
+                                </button>
+                                <button onclick="app.switchUserType('tutor')" id="btn-tutor" class="flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300">
+                                    👨‍🏫 Tutor/a
+                                </button>
+                            </div>
+
+                            <form id="login-form" class="space-y-4">
+                                <div id="login-fields-student">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Nick de Alumno</label>
+                                    <input type="text" id="nick" placeholder="BRAIBIT-AD1-001" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 uppercase font-mono">
+                                    
+                                    <label class="block text-sm font-medium text-gray-300 mb-2 mt-4">Contraseña</label>
+                                    <input type="password" id="password" placeholder="••••••••" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500">
+                                </div>
+
+                                <div id="login-fields-tutor" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                                    <input type="email" id="email" placeholder="tu@iesluisbraille.edu" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500">
+                                    
+                                    <label class="block text-sm font-medium text-gray-300 mb-2 mt-4">Contraseña</label>
+                                    <input type="password" id="password-tutor" placeholder="••••••••" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500">
+                                </div>
+
+                                <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-bold">
+                                    🔐 Acceder al Wallet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderDashboard() {
+                const myTransactions = this.transactions.filter(t => 
+                    t.from === this.currentUser.ethAddress || t.to === this.currentUser.ethAddress
+                );
+
+                return `
+                    <nav class="bg-black/40 backdrop-blur-xl border-b border-purple-500/20 sticky top-0 z-50">
+                        <div class="max-w-7xl mx-auto px-4 py-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-xl">
+                                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">${CURRENCY_NAME}</h1>
+                                        <p class="text-xs text-purple-300">IES Luis Braille Network</p>
+                                    </div>
+                                    <div class="ml-4 flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 px-4 py-2 rounded-lg">
+                                        <div class="w-2 h-2 rounded-full ${this.syncStatus === 'connected' ? 'bg-green-400 animate-pulse-slow' : 'bg-red-400'}"></div>
+                                        <span class="text-white text-sm font-semibold">${this.syncStatus === 'connected' ? '✅ Sincronizado' : '❌ Sin conexión'}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <div class="text-right">
+                                        <p class="text-xs text-purple-300">${this.currentUser.role === 'tutor' ? '👨‍🏫 Tutor' : '🎓 Alumno'}</p>
+                                        <p class="text-white font-semibold">${this.currentUser.name}</p>
+                                        ${this.currentUser.class ? `<p class="text-xs text-gray-400">${this.currentUser.class}</p>` : ''}
+                                    </div>
+                                    <button onclick="app.logout()" class="px-4 py-2 bg-red-500/20 text-red-300 rounded-lg border border-red-500/30 font-semibold">Salir</button>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div class="max-w-7xl mx-auto px-4 py-6">
+                        <!-- Wallet Card -->
+                        <div class="bg-gradient-to-br from-purple-500/20 via-pink-500/20 to-purple-500/20 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 mb-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-400 text-sm mb-2">💼 Balance Total</p>
+                                    <div class="flex items-baseline gap-3 mb-3">
+                                        <h2 class="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-200">${formatNumber(this.currentUser.tokens)}</h2>
+                                        <span class="text-3xl text-purple-300 font-bold">${CURRENCY_SYMBOL}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-black/40 rounded-xl p-4 border border-white/10 mt-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <p class="text-gray-400 text-xs font-semibold">🔐 Dirección del Wallet</p>
+                                    <button onclick="app.copyAddress()" class="text-purple-400 text-xs">📋 Copiar</button>
+                                </div>
+                                <code class="text-white font-mono text-sm break-all">${this.currentUser.ethAddress}</code>
+                            </div>
+                        </div>
+
+                        ${this.currentUser.role === 'tutor' ? this.renderTutorPanel() : this.renderStudentPanel()}
+
+                        <!-- Historial de Transacciones -->
+                        <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30 mt-6">
+                            <h3 class="text-white font-bold text-2xl mb-4">📜 Historial de Transacciones</h3>
+                            ${myTransactions.length === 0 ? `
+                                <p class="text-gray-400 text-center py-8">No hay transacciones</p>
+                            ` : `
+                                <div class="space-y-3">
+                                    ${myTransactions.slice(0, 10).map(tx => {
+                                        const isReceived = tx.to === this.currentUser.ethAddress;
+                                        return `
+                                            <div class="bg-white/5 rounded-xl p-4 border-2 ${isReceived ? 'border-green-500/30' : 'border-red-500/30'}">
+                                                <div class="flex justify-between items-start">
+                                                    <div class="flex-1">
+                                                        <p class="font-bold text-lg ${isReceived ? 'text-green-400' : 'text-red-400'}">${isReceived ? '📥 Recibido' : '📤 Enviado'}</p>
+                                                        <p class="text-white font-semibold">${tx.description}</p>
+                                                        <p class="text-gray-400 text-sm">${isReceived ? `De: ${tx.fromName}` : `A: ${tx.toName}`}</p>
+                                                        <code class="text-purple-400 text-xs font-mono">${formatAddress(tx.hash)}</code>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <p class="text-white font-mono text-2xl font-bold">${isReceived ? '+' : '-'}${formatNumber(tx.amount)} ${CURRENCY_SYMBOL}</p>
+                                                        <p class="text-gray-400 text-xs">Gas: ${tx.gasFee.toFixed(2)} ${CURRENCY_SYMBOL}</p>
+                                                        <p class="text-xs text-green-400 mt-1">✅ ${tx.confirmations || 3}/3 confirmaciones</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderTutorPanel() {
+                const students = this.users.filter(u => u.role === 'student').sort((a, b) => a.class.localeCompare(b.class));
+                
+                return `
+                    <div class="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-6 border border-blue-500/30">
+                        <h3 class="text-white font-bold text-2xl mb-4">⭐ Asignar Tareas</h3>
+                        
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-300 text-sm mb-2 font-semibold">Selecciona Alumno/a</label>
+                                <select id="student-select" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
+                                    <option value="">-- Elige un alumno --</option>
+                                    ${students.map(s => `
+                                        <option value="${s.id}">${s.name} (${s.class}) - ${formatNumber(s.tokens)} ${CURRENCY_SYMBOL}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-300 text-sm mb-2 font-semibold">Selecciona Tarea</label>
+                                <select id="task-select" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white">
+                                    <option value="">-- Elige una tarea --</option>
+                                    ${this.tasks.map(t => `
+                                        <option value="${t.id}">${t.name} - ${t.reward} ${CURRENCY_SYMBOL}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button onclick="app.handleAssignTask()" class="mt-4 w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-bold">
+                            ⚡ Confirmar Transacción
+                        </button>
+
+                        <!-- Ranking de Alumnos -->
+                        <div class="mt-6">
+                            <h4 class="text-white font-bold text-lg mb-3">🏆 Ranking General</h4>
+                            <div class="space-y-2 max-h-96 overflow-y-auto">
+                                ${students.sort((a, b) => b.tokens - a.tokens).slice(0, 20).map((s, i) => `
+                                    <div class="bg-white/5 rounded-lg p-3 flex justify-between items-center">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-2xl">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
+                                            <div>
+                                                <p class="text-white font-semibold">${s.name}</p>
+                                                <p class="text-gray-400 text-sm">${s.class}</p>
+                                            </div>
+                                        </div>
+                                        <p class="text-white font-mono font-bold">${formatNumber(s.tokens)} ${CURRENCY_SYMBOL}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderStudentPanel() {
+                return `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Tareas Disponibles -->
+                        <div class="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-2xl p-6 border border-green-500/30">
+                            <h3 class="text-white font-bold text-xl mb-4">📋 Tareas Disponibles</h3>
+                            <div class="space-y-2">
+                                ${this.tasks.map(task => `
+                                    <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                                        <div class="flex justify-between items-center">
+                                            <div>
+                                                <p class="text-white font-semibold">${task.name}</p>
+                                                <p class="text-gray-400 text-xs">${task.category}</p>
+                                            </div>
+                                            <span class="bg-green-500/20 text-green-300 px-3 py-1 rounded-full font-mono font-bold">${task.reward} ${CURRENCY_SYMBOL}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Info del Alumno -->
+                        <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-2xl p-6 border border-purple-500/30">
+                            <h3 class="text-white font-bold text-xl mb-4">👤 Mi Información</h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Nick:</span>
+                                    <span class="text-white font-mono font-semibold">${this.currentUser.nick}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Clase:</span>
+                                    <span class="text-white font-semibold">${this.currentUser.class}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Transacciones:</span>
+                                    <span class="text-white font-mono">${this.transactions.filter(t => t.from === this.currentUser.ethAddress || t.to === this.currentUser.ethAddress).length}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                                <p class="text-yellow-200 text-sm">
+                                    💡 <strong>¿Sabías que...?</strong> Cada transacción en BraiBit se registra en un bloque de la blockchain, garantizando transparencia y trazabilidad.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            attachEventListeners() {
+                // Login form
+                const loginForm = document.getElementById('login-form');
+                if (loginForm) {
+                    loginForm.onsubmit = (e) => {
+                        e.preventDefault();
+                        const userType = document.getElementById('btn-student').classList.contains('bg-gradient-to-r') ? 'student' : 'tutor';
+                        
+                        if (userType === 'student') {
+                            this.login('student', {
+                                nick: document.getElementById('nick').value.toUpperCase(),
+                                password: document.getElementById('password').value
+                            });
+                        } else {
+                            this.login('tutor', {
+                                email: document.getElementById('email').value,
+                                password: document.getElementById('password-tutor').value
+                            });
+                        }
+                    };
+                }
+            }
+
+            switchUserType(type) {
+                const btnStudent = document.getElementById('btn-student');
+                const btnTutor = document.getElementById('btn-tutor');
+                const fieldsStudent = document.getElementById('login-fields-student');
+                const fieldsTutor = document.getElementById('login-fields-tutor');
+
+                if (type === 'student') {
+                    btnStudent.className = 'flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white';
+                    btnTutor.className = 'flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300';
+                    fieldsStudent.classList.remove('hidden');
+                    fieldsTutor.classList.add('hidden');
+                } else {
+                    btnTutor.className = 'flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white';
+                    btnStudent.className = 'flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300';
+                    fieldsTutor.classList.remove('hidden');
+                    fieldsStudent.classList.add('hidden');
+                }
+            }
+
+            copyAddress() {
+                navigator.clipboard.writeText(this.currentUser.ethAddress);
+                alert('✅ Dirección copiada al portapapeles');
+            }
+
+            handleAssignTask() {
+                const studentId = document.getElementById('student-select').value;
+                const taskId = document.getElementById('task-select').value;
+
+                if (!studentId || !taskId) {
+                    alert('⚠️ Selecciona un alumno y una tarea');
+                    return;
+                }
+
+                this.assignTask(studentId, taskId);
+            }
+        }
+
+        // Iniciar aplicación
+        window.app = new BraiBitApp();
+    </script>
+</body>
+</html>
