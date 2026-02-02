@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BraiBit v4.0 - IES Luis Braille</title>
+    <title>BraiBit v5.0 - IES Luis Braille</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @keyframes pulse-slow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-slow{animation:pulse-slow 3s ease infinite}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}.animate-float{animation:float 4s ease-in-out infinite}
         @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(147,51,234,.3)}50%{box-shadow:0 0 40px rgba(147,51,234,.6)}}.animate-glow{animation:glow 2s ease infinite}
         ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:rgba(0,0,0,.1)}::-webkit-scrollbar-thumb{background:rgba(147,51,234,.5);border-radius:4px}
         .tab-btn{transition:all .3s}.tab-btn.active{background:linear-gradient(135deg,#9333ea,#ec4899);color:#fff}
         .modal-backdrop{background:rgba(0,0,0,.8);backdrop-filter:blur(8px)}
-        .card-hover:hover{transform:translateY(-4px);box-shadow:0 20px 40px rgba(147,51,234,.2)}
+        .card-hover:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(147,51,234,.2)}
         select{background-color:rgba(255,255,255,0.1);color:white}
-        select option{background-color:#ffffff;color:#000000;padding:10px}
-        .mode-btn{transition:all .2s;opacity:0.6}.mode-btn.active{opacity:1;transform:scale(1.05);ring:2px solid white}
-        .mode-sofa{background:linear-gradient(135deg,#22c55e,#16a34a)}
-        .mode-mochila{background:linear-gradient(135deg,#f59e0b,#d97706)}
-        .mode-escalada{background:linear-gradient(135deg,#ef4444,#dc2626)}
+        select option{background-color:#ffffff;color:#000000}
+        .opt-btn{transition:all .2s;opacity:0.5;border:2px solid transparent}
+        .opt-btn.active{opacity:1;border-color:white;transform:scale(1.02)}
+        .sofa{background:linear-gradient(135deg,#22c55e,#16a34a)}
+        .mochila{background:linear-gradient(135deg,#f59e0b,#d97706)}
+        .escalada{background:linear-gradient(135deg,#ef4444,#dc2626)}
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 min-h-screen">
@@ -42,31 +42,44 @@ const TUTOR_GROUPS_BY_EMAIL={
 'ana@iesluisbraille.edu':['DAW-1'],
 'elkin@iesluisbraille.edu':['DAW-1'],
 'gonzalo@iesluisbraille.edu':['AC-1','AC-2'],
-'rocio@iesluisbraille.edu':['AC-1','AC-2']
+'rocio@iesluisbraille.edu':['AC-1','AC-2'],
+'supervisor@iesluisbraille.edu':['AD-1','AD-2','DAW-1','AC-1','AC-2','CI-2']
 };
 
 const GROUP_COLORS={'AD-1':'#fbbf24','AD-2':'#60a5fa','DAW-1':'#34d399','AC-1':'#f472b6','AC-2':'#a78bfa','CI-2':'#fb923c'};
 
-// MODOS con multiplicador
-const MODES={
-sofa:{name:'Sofá',icon:'🛋️',mult:1,color:'#22c55e',desc:'1 día · Grupo · Planifica · Sigue instrucciones',min:25,max:50},
-mochila:{name:'Mochila',icon:'🎒',mult:2,color:'#f59e0b',desc:'1 semana · Clase · Prepara materiales · Iniciativa',min:75,max:120},
-escalada:{name:'Escalada',icon:'🧗',mult:4,color:'#ef4444',desc:'1 mes · IES · Organiza · Ejecuta',min:150,max:200}
-};
-
-// TAREAS BASE (8)
-const TASKS=[
-{id:'t1',name:'Limpiar espacios comunes',icon:'🧹',base:25},
-{id:'t2',name:'Mediación entre compañeros',icon:'🤝',base:50},
-{id:'t3',name:'Tutoría entre compañeros',icon:'👨‍🏫',base:50},
-{id:'t4',name:'Creación material educativo',icon:'📚',base:60},
-{id:'t5',name:'Organizar evento escolar',icon:'🎉',base:50},
-{id:'t6',name:'Actividades Orientación',icon:'🧭',base:30},
-{id:'t7',name:'Agenda ODS',icon:'🌍',base:40},
-{id:'t8',name:'Aprendizaje Servicio',icon:'🤲',base:50}
+// TAREAS FIJAS (valor fijo)
+const FIXED_TASKS=[
+{id:'f1',name:'Limpiar espacios comunes',icon:'🧹',bb:50,type:'fixed'},
+{id:'f2',name:'Mediación entre compañeros',icon:'🤝',bb:200,type:'fixed'},
+{id:'f3',name:'Tutoría entre compañeros',icon:'👨‍🏫',bb:100,type:'fixed'},
+{id:'f4',name:'Creación material educativo',icon:'📚',bb:120,type:'fixed'},
+{id:'f5',name:'Organizar evento escolar',icon:'🎉',bb:200,type:'fixed'}
 ];
 
-// TIENDA (10 recompensas)
+// TAREAS VARIABLES (requieren formulario Sofá/Mochila/Escalada)
+const VARIABLE_TASKS=[
+{id:'v1',name:'Actividades Orientación',icon:'🧭',type:'variable'},
+{id:'v2',name:'Agenda ODS',icon:'🌍',type:'variable'},
+{id:'v3',name:'Aprendizaje Servicio',icon:'🤲',type:'variable'}
+];
+
+// NIVELES
+const LEVELS={
+sofa:{name:'Sofá',icon:'🛋️',min:25,max:50,color:'#22c55e'},
+mochila:{name:'Mochila',icon:'🎒',min:75,max:120,color:'#f59e0b'},
+escalada:{name:'Escalada',icon:'🧗',min:150,max:200,color:'#ef4444'}
+};
+
+// CRITERIOS para calcular nivel
+const CRITERIA={
+tiempo:{label:'Tiempo dedicado',options:[{v:'dia',l:'1 día',lvl:'sofa'},{v:'semana',l:'1 semana',lvl:'mochila'},{v:'mes',l:'1 mes',lvl:'escalada'}]},
+beneficio:{label:'Beneficia a',options:[{v:'grupo',l:'Grupo',lvl:'sofa'},{v:'clase',l:'Clase',lvl:'mochila'},{v:'ies',l:'Todo el IES',lvl:'escalada'}]},
+esfuerzo:{label:'Esfuerzo',options:[{v:'planifica',l:'Planifica',lvl:'sofa'},{v:'prepara',l:'Prepara materiales',lvl:'mochila'},{v:'organiza',l:'Organiza',lvl:'escalada'}]},
+responsabilidad:{label:'Responsabilidad',options:[{v:'sigue',l:'Sigue instrucciones',lvl:'sofa'},{v:'iniciativa',l:'Tiene iniciativa',lvl:'mochila'},{v:'ejecuta',l:'Ejecuta',lvl:'escalada'}]}
+};
+
+// TIENDA
 const SHOP=[
 {id:'r1',name:'Desayuno',price:200,icon:'☕',desc:'Desayuno gratis en cafetería',cat:'Bienestar'},
 {id:'r2',name:'Cambio de sitio',price:150,icon:'💺',desc:'Elegir sitio en clase 1 semana',cat:'Bienestar'},
@@ -83,22 +96,20 @@ const SHOP=[
 const initData=async()=>{
 const ss=await db.ref('shop').once('value');
 if(!ss.val()){const d={};SHOP.forEach(r=>{d[r.id]={...r,stock:999}});await db.ref('shop').set(d);}
-const ts=await db.ref('tasks').once('value');
-if(!ts.val()){const d={};TASKS.forEach(t=>{d[t.id]=t});await db.ref('tasks').set(d);}
 };
 
 class App{
 constructor(){
-this.user=null;this.users=[];this.tasks=[];this.groups=[];this.txs=[];this.purchases=[];this.shop=[];this.customTasks=[];
-this.sync='connecting';this.tab='dashboard';this.selectedGroup=null;this.selectedMode='sofa';this.modal=null;this.modalData=null;
+this.user=null;this.users=[];this.txs=[];this.purchases=[];this.shop=[];this.customTasks=[];
+this.sync='connecting';this.tab='dashboard';this.selectedGroup=null;this.modal=null;this.modalData=null;
+// Para formulario variable
+this.varForm={task:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};
 this.init();
 }
 async init(){await initData();this.listen();this.render();}
 listen(){
 db.ref('users').on('value',s=>{this.users=s.val()?Object.values(s.val()):[];if(this.user){const u=this.users.find(x=>x.id===this.user.id);if(u)this.user=u}this.render()});
-db.ref('tasks').on('value',s=>{this.tasks=s.val()?Object.values(s.val()):[];this.render()});
 db.ref('customTasks').on('value',s=>{this.customTasks=s.val()?Object.values(s.val()):[];this.render()});
-db.ref('groups').on('value',s=>{this.groups=s.val()?Object.values(s.val()):[];this.render()});
 db.ref('transactions').on('value',s=>{this.txs=s.val()?Object.values(s.val()).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];this.render()});
 db.ref('purchases').on('value',s=>{this.purchases=s.val()?Object.values(s.val()).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)):[];this.render()});
 db.ref('shop').on('value',s=>{this.shop=s.val()?Object.values(s.val()):[];this.render()});
@@ -106,28 +117,24 @@ db.ref('.info/connected').on('value',s=>{this.sync=s.val()?'connected':'disconne
 }
 getMyGroups(){
 if(!this.user||this.user.role!=='tutor')return[];
-// Supervisor global ve todos los grupos
-if(this.user.email==='supervisor@iesluisbraille.edu'){
-return['AD-1','AD-2','DAW-1','AC-1','AC-2','CI-2'];
-}
 return TUTOR_GROUPS_BY_EMAIL[this.user.email]||[];
 }
 getMyStudents(){
 const myGroups=this.getMyGroups();
 return this.users.filter(u=>u.role==='student'&&myGroups.includes(u.class));
 }
-getStudentsByGroup(groupName){
-return this.users.filter(u=>u.role==='student'&&u.class===groupName);
+getStudentsByGroup(g){
+return this.users.filter(u=>u.role==='student'&&u.class===g);
 }
-getAllTasks(){
-return [...this.tasks,...this.customTasks];
+getAllVariableTasks(){
+return [...VARIABLE_TASKS,...this.customTasks];
 }
 async login(type,creds){
 if(type==='tutor'){
 const t=this.users.find(u=>u.role==='tutor'&&u.email===creds.email);
 if(!t||t.password!==creds.password){alert('Credenciales incorrectas');return}
 this.user=t;
-const myGroups=TUTOR_GROUPS_BY_EMAIL[t.email]||[];
+const myGroups=this.getMyGroups();
 this.selectedGroup=myGroups[0]||null;
 }else{
 const s=this.users.find(u=>u.role==='student'&&u.nick===creds.nick);
@@ -139,98 +146,107 @@ this.tab='dashboard';this.render();
 logout(){this.user=null;this.tab='dashboard';this.selectedGroup=null;this.render()}
 setTab(t){this.tab=t;this.render()}
 selectGroup(g){this.selectedGroup=g;this.render()}
-selectMode(m){this.selectedMode=m;this.render()}
-openModal(t,d){this.modal=t;this.modalData=d||null;this.render()}
+openModal(t,d){this.modal=t;this.modalData=d||null;this.varForm={task:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};this.render()}
 closeModal(){this.modal=null;this.modalData=null;this.render()}
 
-calcBB(base,mode){
-const m=MODES[mode];
-let bb=base*m.mult;
-if(bb<m.min)bb=m.min;
-if(bb>m.max)bb=m.max;
-return bb;
+// Calcular nivel y BB según criterios
+calcLevel(){
+const f=this.varForm;
+if(!f.tiempo||!f.beneficio||!f.esfuerzo||!f.responsabilidad)return null;
+const scores={sofa:0,mochila:0,escalada:0};
+[f.tiempo,f.beneficio,f.esfuerzo,f.responsabilidad].forEach(lvl=>{scores[lvl]++});
+// El nivel es el que tenga más puntos, en empate el más alto
+if(scores.escalada>=2)return{level:'escalada',bb:Math.round(LEVELS.escalada.min+(scores.escalada-2)*(LEVELS.escalada.max-LEVELS.escalada.min)/2)};
+if(scores.mochila>=2)return{level:'mochila',bb:Math.round(LEVELS.mochila.min+(scores.mochila-2)*(LEVELS.mochila.max-LEVELS.mochila.min)/2)};
+return{level:'sofa',bb:Math.round(LEVELS.sofa.min+scores.sofa*(LEVELS.sofa.max-LEVELS.sofa.min)/4)};
 }
-async assignTask(sId,tId,mode){
+setVarField(field,value,lvl){
+this.varForm[field]=lvl;
+this.render();
+}
+
+// ASIGNAR TAREA FIJA
+async assignFixedTask(sId,taskId){
 const s=this.users.find(u=>u.id===sId);
-const t=this.getAllTasks().find(x=>x.id===tId);
+const t=FIXED_TASKS.find(x=>x.id===taskId);
 if(!s||!t)return;
-const bb=this.calcBB(t.base,mode);
-const m=MODES[mode];
-const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:s.ethAddress,fromName:this.user.name,toName:s.name,toId:s.id,fromId:this.user.id,amount:bb,type:'task_reward',mode:mode,modeIcon:m.icon,modeName:m.name,taskIcon:t.icon,description:t.icon+' '+t.name+' '+m.icon,timestamp:new Date().toISOString(),status:'confirmed',reversed:false};
-try{await db.ref('users/'+sId+'/tokens').set(s.tokens+bb);await db.ref('transactions/'+tx.id).set(tx);alert('✅ '+bb+' '+BB+' asignados a '+s.name+' ('+m.icon+' '+m.name+')')}catch(e){alert('Error');console.error(e)}
+const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:s.ethAddress,fromName:this.user.name,toName:s.name,toId:s.id,fromId:this.user.id,amount:t.bb,type:'fixed_task',taskIcon:t.icon,taskName:t.name,description:t.icon+' '+t.name,timestamp:new Date().toISOString(),status:'confirmed',reversed:false};
+try{await db.ref('users/'+sId+'/tokens').set(s.tokens+t.bb);await db.ref('transactions/'+tx.id).set(tx);alert('✅ '+t.bb+' '+BB+' asignados a '+s.name)}catch(e){alert('Error');console.error(e)}
 }
-async createCustomTask(name,icon,base){
+
+// ASIGNAR TAREA VARIABLE
+async assignVariableTask(sId){
+const s=this.users.find(u=>u.id===sId);
+const f=this.varForm;
+const t=this.getAllVariableTasks().find(x=>x.id===f.task);
+const calc=this.calcLevel();
+if(!s||!t||!calc||!f.desc){alert('Completa todos los campos');return}
+const lvl=LEVELS[calc.level];
+const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:s.ethAddress,fromName:this.user.name,toName:s.name,toId:s.id,fromId:this.user.id,amount:calc.bb,type:'variable_task',taskIcon:t.icon,taskName:t.name,levelIcon:lvl.icon,levelName:lvl.name,description:t.icon+' '+t.name+' '+lvl.icon,detail:f.desc,criterios:{tiempo:f.tiempo,beneficio:f.beneficio,esfuerzo:f.esfuerzo,responsabilidad:f.responsabilidad},timestamp:new Date().toISOString(),status:'confirmed',reversed:false};
+try{await db.ref('users/'+sId+'/tokens').set(s.tokens+calc.bb);await db.ref('transactions/'+tx.id).set(tx);alert('✅ '+calc.bb+' '+BB+' ('+lvl.icon+' '+lvl.name+') asignados a '+s.name);this.closeModal()}catch(e){alert('Error');console.error(e)}
+}
+
+// CREAR TAREA PERSONALIZADA
+async createCustomTask(name,icon){
 const id='ct_'+Date.now();
-const task={id,name,icon,base:parseInt(base),createdBy:this.user.name,createdAt:new Date().toISOString()};
+const task={id,name,icon:icon||'📌',type:'variable',createdBy:this.user.name,createdAt:new Date().toISOString()};
 try{await db.ref('customTasks/'+id).set(task);alert('✅ Tarea "'+name+'" creada');this.closeModal()}catch(e){alert('Error');console.error(e)}
 }
+
+// COMPRAR RECOMPENSA
 async buyReward(rId,comment){
 const r=this.shop.find(x=>x.id===rId);if(!r)return;
 if(this.user.tokens<r.price){alert('Saldo insuficiente');return}
-if(r.stock<=0){alert('Agotado');return}
 const p={id:'p_'+Date.now(),hash:generateTxHash(),studentId:this.user.id,studentName:this.user.name,studentClass:this.user.class,rewardId:r.id,rewardName:r.name,rewardIcon:r.icon,price:r.price,comment:comment||'',timestamp:new Date().toISOString(),status:'pending'};
-const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:'0x0000000000000000000000000000000000shop',fromName:this.user.name,toName:'BraiBit Shop',fromId:this.user.id,toId:'shop',amount:r.price,type:'shop_purchase',taskIcon:r.icon,description:r.icon+' '+r.name,timestamp:new Date().toISOString(),status:'confirmed'};
-try{await db.ref('users/'+this.user.id+'/tokens').set(this.user.tokens-r.price);await db.ref('shop/'+rId+'/stock').set(r.stock-1);await db.ref('purchases/'+p.id).set(p);await db.ref('transactions/'+tx.id).set(tx);alert('✅ Compra realizada. Un tutor la verificará.');this.closeModal()}catch(e){alert('Error');console.error(e)}
+const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:'0xSHOP',fromName:this.user.name,toName:'Tienda',fromId:this.user.id,toId:'shop',amount:r.price,type:'purchase',taskIcon:r.icon,description:r.icon+' '+r.name,timestamp:new Date().toISOString(),status:'confirmed'};
+try{await db.ref('users/'+this.user.id+'/tokens').set(this.user.tokens-r.price);await db.ref('purchases/'+p.id).set(p);await db.ref('transactions/'+tx.id).set(tx);alert('✅ Compra realizada');this.closeModal()}catch(e){alert('Error');console.error(e)}
 }
+
 async verifyPurchase(pId,ok){
 const p=this.purchases.find(x=>x.id===pId);if(!p)return;
 try{
 if(ok){await db.ref('purchases/'+pId).update({status:'verified',verifiedBy:this.user.name,verifiedAt:new Date().toISOString()});alert('✅ Verificado')}
-else{const s=this.users.find(u=>u.id===p.studentId);if(s){await db.ref('users/'+p.studentId+'/tokens').set(s.tokens+p.price);const r=this.shop.find(x=>x.id===p.rewardId);if(r)await db.ref('shop/'+p.rewardId+'/stock').set(r.stock+1)}await db.ref('purchases/'+pId).update({status:'rejected',verifiedBy:this.user.name});alert('❌ Rechazado y devuelto')}
+else{const s=this.users.find(u=>u.id===p.studentId);if(s)await db.ref('users/'+p.studentId+'/tokens').set(s.tokens+p.price);await db.ref('purchases/'+pId).update({status:'rejected',verifiedBy:this.user.name});alert('❌ Rechazado y devuelto')}
 }catch(e){alert('Error');console.error(e)}
 }
+
 async revertTx(txId){
-const tx=this.txs.find(t=>t.id===txId);if(!tx||tx.reversed||tx.type==='reversal')return;
-const s=this.users.find(u=>u.id===tx.toId);if(!s){alert('Alumno no encontrado');return}
-if(s.tokens<tx.amount){alert('Saldo insuficiente del alumno');return}
-const rev={id:'tx_'+Date.now(),hash:generateTxHash(),from:s.ethAddress,to:this.user.ethAddress,fromName:s.name,toName:this.user.name,fromId:s.id,toId:this.user.id,amount:tx.amount,type:'reversal',taskIcon:'↩️',description:'↩️ Reversión: '+tx.description,originalTxId:tx.id,timestamp:new Date().toISOString(),status:'confirmed'};
-try{await db.ref('users/'+s.id+'/tokens').set(s.tokens-tx.amount);await db.ref('transactions/'+tx.id+'/reversed').set(true);await db.ref('transactions/'+rev.id).set(rev);alert('✅ Revertido');this.closeModal()}catch(e){alert('Error');console.error(e)}
+const tx=this.txs.find(t=>t.id===txId);if(!tx||tx.reversed)return;
+const s=this.users.find(u=>u.id===tx.toId);if(!s||s.tokens<tx.amount){alert('No se puede revertir');return}
+try{await db.ref('users/'+s.id+'/tokens').set(s.tokens-tx.amount);await db.ref('transactions/'+txId+'/reversed').set(true);alert('✅ Revertido')}catch(e){alert('Error');console.error(e)}
 }
 
-// ESTADISTICAS GLOBALES
+// STATS
 getStats(){
-const allStudents=this.users.filter(u=>u.role==='student');
-const totalBB=allStudents.reduce((a,s)=>a+s.tokens,0);
-const avgBB=allStudents.length?totalBB/allStudents.length:0;
-// Tareas más asignadas
+const students=this.users.filter(u=>u.role==='student');
+const totalBB=students.reduce((a,s)=>a+s.tokens,0);
+const txValid=this.txs.filter(tx=>!tx.reversed&&(tx.type==='fixed_task'||tx.type==='variable_task'));
+const levelCounts={sofa:0,mochila:0,escalada:0};
+txValid.filter(tx=>tx.levelName).forEach(tx=>{
+if(tx.levelName==='Sofá')levelCounts.sofa++;
+else if(tx.levelName==='Mochila')levelCounts.mochila++;
+else if(tx.levelName==='Escalada')levelCounts.escalada++;
+});
 const taskCounts={};
-this.txs.filter(tx=>tx.type==='task_reward'&&!tx.reversed).forEach(tx=>{
-const key=tx.description||'Otro';
-taskCounts[key]=(taskCounts[key]||0)+1;
-});
+txValid.forEach(tx=>{const k=tx.taskIcon+' '+tx.taskName;taskCounts[k]=(taskCounts[k]||0)+1});
 const topTasks=Object.entries(taskCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-// Modos más usados
-const modeCounts={sofa:0,mochila:0,escalada:0};
-this.txs.filter(tx=>tx.type==='task_reward'&&!tx.reversed&&tx.mode).forEach(tx=>{
-modeCounts[tx.mode]=(modeCounts[tx.mode]||0)+1;
-});
-// Recompensas más compradas
 const rewardCounts={};
-this.purchases.filter(p=>p.status==='verified').forEach(p=>{
-const key=(p.rewardIcon||'')+''+p.rewardName;
-rewardCounts[key]=(rewardCounts[key]||0)+1;
-});
+this.purchases.filter(p=>p.status==='verified').forEach(p=>{const k=p.rewardIcon+' '+p.rewardName;rewardCounts[k]=(rewardCounts[k]||0)+1});
 const topRewards=Object.entries(rewardCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-// Compras pendientes
 const pending=this.purchases.filter(p=>p.status==='pending');
-return{totalBB,avgBB,topTasks,modeCounts,topRewards,pending,totalStudents:allStudents.length,totalTx:this.txs.filter(tx=>!tx.reversed).length};
+return{totalBB,totalStudents:students.length,totalTx:txValid.length,levelCounts,topTasks,topRewards,pending};
 }
 
-render(){
-const el=document.getElementById('app');
-el.innerHTML=!this.user?this.loginHTML():this.dashHTML();
-this.events();
-}
+render(){document.getElementById('app').innerHTML=!this.user?this.loginHTML():this.dashHTML();this.events()}
+
 loginHTML(){
-return '<div class="min-h-screen flex items-center justify-center p-4"><div class="bg-black/40 backdrop-blur-2xl rounded-3xl p-8 max-w-md w-full border border-purple-500/30 animate-glow"><div class="text-center mb-8"><div class="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-2xl inline-block mb-4 animate-float"><svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><h1 class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">'+NAME+'</h1><p class="text-purple-300 text-sm">IES Luis Braille</p><span class="inline-block mt-2 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-xs text-purple-300">v4.0</span></div><div class="flex gap-2 mb-6"><button onclick="app.switchType(\'student\')" id="btn-s" class="flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white">Alumno</button><button onclick="app.switchType(\'tutor\')" id="btn-t" class="flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300">Tutor</button></div><form id="login-form" class="space-y-4"><div id="f-student"><label class="block text-sm text-gray-300 mb-2">Nick</label><input type="text" id="nick" placeholder="BRAIBIT-AD1-001" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white uppercase font-mono"><label class="block text-sm text-gray-300 mb-2 mt-4">Contraseña</label><input type="password" id="pass" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white"></div><div id="f-tutor" class="hidden"><label class="block text-sm text-gray-300 mb-2">Email</label><input type="email" id="email" placeholder="tu@iesluisbraille.edu" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white"><label class="block text-sm text-gray-300 mb-2 mt-4">Contraseña</label><input type="password" id="pass-t" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white"></div><button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-bold">Acceder</button></form></div></div>';
+return '<div class="min-h-screen flex items-center justify-center p-4"><div class="bg-black/40 backdrop-blur-2xl rounded-3xl p-8 max-w-md w-full border border-purple-500/30 animate-glow"><div class="text-center mb-8"><div class="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-2xl inline-block mb-4"><span class="text-4xl">🪙</span></div><h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">'+NAME+'</h1><p class="text-purple-300 text-sm">IES Luis Braille</p><span class="inline-block mt-2 px-3 py-1 bg-purple-500/20 border border-purple-500/30 rounded-full text-xs text-purple-300">v5.0</span></div><div class="flex gap-2 mb-6"><button onclick="app.switchType(\'student\')" id="btn-s" class="flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white">Alumno</button><button onclick="app.switchType(\'tutor\')" id="btn-t" class="flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300">Tutor</button></div><form id="login-form" class="space-y-4"><div id="f-student"><label class="block text-sm text-gray-300 mb-2">Nick</label><input type="text" id="nick" placeholder="BRAIBIT-AD1-001" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white uppercase font-mono"><label class="block text-sm text-gray-300 mb-2 mt-4">Contraseña</label><input type="password" id="pass" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white"></div><div id="f-tutor" class="hidden"><label class="block text-sm text-gray-300 mb-2">Email</label><input type="email" id="email" placeholder="tu@iesluisbraille.edu" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white"><label class="block text-sm text-gray-300 mb-2 mt-4">Contraseña</label><input type="password" id="pass-t" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white"></div><button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-bold">Acceder</button></form></div></div>';
 }
 
 dashHTML(){
 const syncC=this.sync==='connected'?'bg-green-400 animate-pulse-slow':'bg-red-400';
-const syncT=this.sync==='connected'?'Sync':'Offline';
-const role=this.user.role==='tutor'?'Tutor':'Alumno';
 const myGroups=this.getMyGroups();
-const grpInfo=this.user.role==='tutor'?'<p class="text-xs text-amber-300 font-semibold">'+myGroups.join(' | ')+'</p>':'<p class="text-xs text-gray-400">'+this.user.class+'</p>';
+const grpInfo=this.user.role==='tutor'?'<span class="text-amber-300 text-xs">'+myGroups.join(' · ')+'</span>':'<span class="text-gray-400 text-xs">'+this.user.class+'</span>';
 
 const tabs=this.user.role==='tutor'?[
 {id:'dashboard',l:'📊 Dashboard'},
@@ -243,7 +259,7 @@ const tabs=this.user.role==='tutor'?[
 {id:'ranking',l:'🏆 Ranking'},
 {id:'history',l:'📜 Historial'}
 ];
-let tabsH='';tabs.forEach(t=>{tabsH+='<button onclick="app.setTab(\''+t.id+'\')" class="tab-btn flex-1 px-4 py-3 rounded-xl font-semibold text-sm '+(this.tab===t.id?'active':'text-gray-400')+'">'+t.l+'</button>'});
+let tabsH='';tabs.forEach(t=>{tabsH+='<button onclick="app.setTab(\''+t.id+'\')" class="tab-btn flex-1 px-3 py-2 rounded-xl font-semibold text-sm '+(this.tab===t.id?'active':'text-gray-400')+'">'+t.l+'</button>'});
 
 let content='';
 switch(this.tab){
@@ -254,277 +270,250 @@ case'ranking':content=this.rankingPanel();break;
 case'history':content=this.historyPanel();break;
 }
 
-return '<nav class="bg-black/40 backdrop-blur-xl border-b border-purple-500/20 sticky top-0 z-50"><div class="max-w-7xl mx-auto px-4 py-3"><div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="bg-gradient-to-br from-purple-500 to-pink-500 p-2 rounded-xl"><svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div><h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">'+NAME+'</h1><p class="text-xs text-purple-300">IES Luis Braille</p></div><div class="ml-4 flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 px-3 py-1 rounded-lg"><div class="w-2 h-2 rounded-full '+syncC+'"></div><span class="text-white text-xs">'+syncT+'</span></div></div><div class="flex items-center gap-4"><div class="text-right hidden sm:block"><p class="text-xs text-purple-300">'+role+'</p><p class="text-white font-semibold">'+this.user.name+'</p>'+grpInfo+'</div><button onclick="app.logout()" class="px-4 py-2 bg-red-500/20 text-red-300 rounded-lg border border-red-500/30 text-sm">Salir</button></div></div></div></nav><div class="max-w-7xl mx-auto px-4 py-6"><div class="bg-gradient-to-br from-purple-500/20 via-pink-500/20 to-purple-500/20 backdrop-blur-xl rounded-3xl p-6 border border-purple-500/30 mb-6"><div class="flex justify-between items-center"><div><p class="text-gray-400 text-sm mb-1">Balance</p><div class="flex items-baseline gap-2"><h2 class="text-4xl font-bold text-white font-mono">'+formatNum(this.user.tokens)+'</h2><span class="text-xl text-purple-300 font-bold">'+BB+'</span></div></div><div class="text-right"><code class="text-purple-400 text-xs">'+formatAddr(this.user.ethAddress)+'</code></div></div></div><div class="flex flex-wrap gap-2 mb-6 bg-black/20 p-2 rounded-2xl border border-white/5">'+tabsH+'</div>'+content+'</div>'+(this.modal?this.modalHTML():'');
+return '<nav class="bg-black/40 backdrop-blur-xl border-b border-purple-500/20 sticky top-0 z-50"><div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between"><div class="flex items-center gap-3"><span class="text-2xl">🪙</span><div><h1 class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">'+NAME+'</h1></div><div class="flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg ml-2"><div class="w-2 h-2 rounded-full '+syncC+'"></div></div></div><div class="flex items-center gap-3"><div class="text-right"><p class="text-white font-semibold text-sm">'+this.user.name+'</p>'+grpInfo+'</div><button onclick="app.logout()" class="px-3 py-1 bg-red-500/20 text-red-300 rounded-lg text-sm">Salir</button></div></div></nav><div class="max-w-6xl mx-auto px-4 py-4"><div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl p-5 border border-purple-500/30 mb-4 flex justify-between items-center"><div><p class="text-gray-400 text-xs">Balance</p><p class="text-3xl font-bold text-white font-mono">'+formatNum(this.user.tokens)+' <span class="text-purple-300 text-xl">'+BB+'</span></p></div><code class="text-purple-400 text-xs hidden sm:block">'+formatAddr(this.user.ethAddress)+'</code></div><div class="flex gap-2 mb-4 bg-black/20 p-1 rounded-xl">'+tabsH+'</div>'+content+'</div>'+(this.modal?this.modalHTML():'');
 }
 
-// DASHBOARD GLOBAL PARA TUTORES
 dashboardPanel(){
 const stats=this.getStats();
-const myGroups=this.getMyGroups();
 const myStudents=this.getMyStudents();
 const myTotalBB=myStudents.reduce((a,s)=>a+s.tokens,0);
+const myGroups=this.getMyGroups();
 const myPending=this.purchases.filter(p=>p.status==='pending'&&myStudents.some(s=>s.id===p.studentId));
 
-// Botones de grupo
 let groupBtns='';
 myGroups.forEach(g=>{
-const c=GROUP_COLORS[g]||'#9333ea';
-const count=this.getStudentsByGroup(g).length;
-groupBtns+='<button onclick="app.selectGroup(\''+g+'\')" class="px-4 py-3 rounded-xl font-bold text-white" style="background:'+c+'"><span class="text-lg">'+g+'</span><br><span class="text-xs opacity-80">'+count+' alumnos</span></button>';
+const c=GROUP_COLORS[g];
+const n=this.getStudentsByGroup(g).length;
+groupBtns+='<button onclick="app.selectGroup(\''+g+'\')" class="px-4 py-2 rounded-lg text-white font-bold text-sm" style="background:'+c+'">'+g+' <span class="opacity-70">('+n+')</span></button>';
 });
 
-// Top tareas
-let topTasksH='';
-if(stats.topTasks.length){stats.topTasks.forEach(([name,count])=>{topTasksH+='<div class="flex justify-between py-2 border-b border-white/5"><span class="text-white text-sm">'+name+'</span><span class="text-purple-300 font-mono">'+count+'</span></div>'});}
-else{topTasksH='<p class="text-gray-500 text-sm">Sin datos</p>';}
-
-// Modos
-const totalModes=stats.modeCounts.sofa+stats.modeCounts.mochila+stats.modeCounts.escalada;
-const pctSofa=totalModes?(stats.modeCounts.sofa/totalModes*100).toFixed(0):0;
-const pctMochila=totalModes?(stats.modeCounts.mochila/totalModes*100).toFixed(0):0;
-const pctEscalada=totalModes?(stats.modeCounts.escalada/totalModes*100).toFixed(0):0;
-
-// Top recompensas
-let topRewardsH='';
-if(stats.topRewards.length){stats.topRewards.forEach(([name,count])=>{topRewardsH+='<div class="flex justify-between py-2 border-b border-white/5"><span class="text-white text-sm">'+name+'</span><span class="text-emerald-300 font-mono">'+count+'</span></div>'});}
-else{topRewardsH='<p class="text-gray-500 text-sm">Sin datos</p>';}
-
-// Compras pendientes
 let pendingH='';
-if(myPending.length>0){
+if(myPending.length){
 let items='';
 myPending.forEach(p=>{
-items+='<div class="bg-black/30 rounded-lg p-3 flex justify-between items-center"><div><p class="text-white font-semibold">'+p.rewardIcon+' '+p.studentName+'</p><p class="text-yellow-300 text-sm">'+p.rewardName+'</p>'+(p.comment?'<p class="text-gray-400 text-xs italic">"'+p.comment+'"</p>':'')+'</div><div class="flex gap-2"><button onclick="app.verifyPurchase(\''+p.id+'\',true)" class="px-3 py-2 bg-green-500/20 text-green-300 rounded-lg">✓</button><button onclick="app.verifyPurchase(\''+p.id+'\',false)" class="px-3 py-2 bg-red-500/20 text-red-300 rounded-lg">✗</button></div></div>';
+items+='<div class="bg-black/30 rounded-lg p-3 flex justify-between items-center"><div><p class="text-white">'+p.rewardIcon+' '+p.studentName+'</p><p class="text-yellow-300 text-sm">'+p.rewardName+'</p>'+(p.comment?'<p class="text-gray-400 text-xs italic">"'+p.comment+'"</p>':'')+'</div><div class="flex gap-2"><button onclick="app.verifyPurchase(\''+p.id+'\',true)" class="px-3 py-1 bg-green-500/20 text-green-300 rounded">✓</button><button onclick="app.verifyPurchase(\''+p.id+'\',false)" class="px-3 py-1 bg-red-500/20 text-red-300 rounded">✗</button></div></div>';
 });
-pendingH='<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 mb-6"><h3 class="text-yellow-300 font-bold text-lg mb-4">⏳ Compras Pendientes ('+myPending.length+')</h3><div class="space-y-2">'+items+'</div></div>';
+pendingH='<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-4"><h3 class="text-yellow-300 font-bold mb-3">⏳ Compras Pendientes ('+myPending.length+')</h3><div class="space-y-2">'+items+'</div></div>';
 }
 
-return '<div class="space-y-6">'+pendingH+
-'<div class="grid grid-cols-2 md:grid-cols-4 gap-4">'+
-'<div class="bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl p-4 border border-blue-500/30 text-center"><p class="text-gray-400 text-xs">Mis Alumnos</p><p class="text-white text-3xl font-bold">'+myStudents.length+'</p></div>'+
-'<div class="bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-2xl p-4 border border-green-500/30 text-center"><p class="text-gray-400 text-xs">BB Mis Grupos</p><p class="text-green-400 text-2xl font-bold font-mono">'+formatNum(myTotalBB)+'</p></div>'+
-'<div class="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4 border border-purple-500/30 text-center"><p class="text-gray-400 text-xs">Total IES</p><p class="text-purple-400 text-2xl font-bold font-mono">'+formatNum(stats.totalBB)+'</p></div>'+
-'<div class="bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-2xl p-4 border border-amber-500/30 text-center"><p class="text-gray-400 text-xs">Transacciones</p><p class="text-amber-400 text-2xl font-bold">'+stats.totalTx+'</p></div>'+
-'</div>'+
-'<div class="flex flex-wrap gap-3">'+groupBtns+'</div>'+
-'<div class="grid md:grid-cols-3 gap-6">'+
-'<div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-5 border border-white/10"><h4 class="text-white font-bold mb-3">🏆 Tareas más asignadas</h4>'+topTasksH+'</div>'+
-'<div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-5 border border-white/10"><h4 class="text-white font-bold mb-3">🎚️ Distribución modos</h4><div class="space-y-3"><div><div class="flex justify-between text-sm mb-1"><span class="text-green-400">🛋️ Sofá</span><span class="text-white">'+pctSofa+'%</span></div><div class="h-2 bg-black/30 rounded-full"><div class="h-2 bg-green-500 rounded-full" style="width:'+pctSofa+'%"></div></div></div><div><div class="flex justify-between text-sm mb-1"><span class="text-amber-400">🎒 Mochila</span><span class="text-white">'+pctMochila+'%</span></div><div class="h-2 bg-black/30 rounded-full"><div class="h-2 bg-amber-500 rounded-full" style="width:'+pctMochila+'%"></div></div></div><div><div class="flex justify-between text-sm mb-1"><span class="text-red-400">🧗 Escalada</span><span class="text-white">'+pctEscalada+'%</span></div><div class="h-2 bg-black/30 rounded-full"><div class="h-2 bg-red-500 rounded-full" style="width:'+pctEscalada+'%"></div></div></div></div></div>'+
-'<div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-5 border border-white/10"><h4 class="text-white font-bold mb-3">🛒 Recompensas populares</h4>'+topRewardsH+'</div>'+
-'</div>'+
-'</div>';
+const total=stats.levelCounts.sofa+stats.levelCounts.mochila+stats.levelCounts.escalada||1;
+const pS=(stats.levelCounts.sofa/total*100).toFixed(0);
+const pM=(stats.levelCounts.mochila/total*100).toFixed(0);
+const pE=(stats.levelCounts.escalada/total*100).toFixed(0);
+
+let topT='';stats.topTasks.forEach(([k,v])=>{topT+='<div class="flex justify-between py-1"><span class="text-white text-sm">'+k+'</span><span class="text-purple-300">'+v+'</span></div>'});
+let topR='';stats.topRewards.forEach(([k,v])=>{topR+='<div class="flex justify-between py-1"><span class="text-white text-sm">'+k+'</span><span class="text-emerald-300">'+v+'</span></div>'});
+
+return pendingH+'<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">'+
+'<div class="bg-black/30 rounded-xl p-4 text-center"><p class="text-gray-400 text-xs">Mis Alumnos</p><p class="text-white text-2xl font-bold">'+myStudents.length+'</p></div>'+
+'<div class="bg-black/30 rounded-xl p-4 text-center"><p class="text-gray-400 text-xs">BB Mis Grupos</p><p class="text-green-400 text-xl font-bold">'+formatNum(myTotalBB)+'</p></div>'+
+'<div class="bg-black/30 rounded-xl p-4 text-center"><p class="text-gray-400 text-xs">Total IES</p><p class="text-purple-400 text-xl font-bold">'+formatNum(stats.totalBB)+'</p></div>'+
+'<div class="bg-black/30 rounded-xl p-4 text-center"><p class="text-gray-400 text-xs">Transacciones</p><p class="text-amber-400 text-xl font-bold">'+stats.totalTx+'</p></div>'+
+'</div><div class="flex flex-wrap gap-2 mb-4">'+groupBtns+'</div><div class="grid md:grid-cols-3 gap-4">'+
+'<div class="bg-black/30 rounded-xl p-4"><h4 class="text-white font-bold mb-3">🏆 Top Tareas</h4>'+(topT||'<p class="text-gray-500 text-sm">Sin datos</p>')+'</div>'+
+'<div class="bg-black/30 rounded-xl p-4"><h4 class="text-white font-bold mb-3">🎚️ Niveles</h4><div class="space-y-2"><div><div class="flex justify-between text-sm"><span class="text-green-400">🛋️ Sofá</span><span>'+pS+'%</span></div><div class="h-2 bg-black/50 rounded-full mt-1"><div class="h-2 bg-green-500 rounded-full" style="width:'+pS+'%"></div></div></div><div><div class="flex justify-between text-sm"><span class="text-amber-400">🎒 Mochila</span><span>'+pM+'%</span></div><div class="h-2 bg-black/50 rounded-full mt-1"><div class="h-2 bg-amber-500 rounded-full" style="width:'+pM+'%"></div></div></div><div><div class="flex justify-between text-sm"><span class="text-red-400">🧗 Escalada</span><span>'+pE+'%</span></div><div class="h-2 bg-black/50 rounded-full mt-1"><div class="h-2 bg-red-500 rounded-full" style="width:'+pE+'%"></div></div></div></div></div>'+
+'<div class="bg-black/30 rounded-xl p-4"><h4 class="text-white font-bold mb-3">🛒 Top Recompensas</h4>'+(topR||'<p class="text-gray-500 text-sm">Sin datos</p>')+'</div></div>';
 }
 
-// PANEL ASIGNAR con selector de MODO
 assignPanel(){
 const myGroups=this.getMyGroups();
-if(!this.selectedGroup||!myGroups.includes(this.selectedGroup)){this.selectedGroup=myGroups[0];}
-const students=this.selectedGroup?this.getStudentsByGroup(this.selectedGroup):[];
-students.sort((a,b)=>a.name.localeCompare(b.name));
-const allTasks=this.getAllTasks();
+if(!this.selectedGroup)this.selectedGroup=myGroups[0];
+const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>a.name.localeCompare(b.name));
 
-// Botones de grupo
 let groupBtns='';
 myGroups.forEach(g=>{
-const c=GROUP_COLORS[g]||'#9333ea';
-const isActive=this.selectedGroup===g;
-const style=isActive?'background:'+c+';color:white;':'background:'+c+'30;color:'+c+';border:2px solid '+c+';';
-groupBtns+='<button onclick="app.selectGroup(\''+g+'\')" class="px-5 py-3 rounded-xl font-bold transition-all" style="'+style+'">'+g+'</button>';
+const c=GROUP_COLORS[g];
+const active=this.selectedGroup===g;
+groupBtns+='<button onclick="app.selectGroup(\''+g+'\')" class="px-4 py-2 rounded-lg font-bold text-sm '+(active?'text-white':'text-gray-300 opacity-60')+'" style="background:'+(active?c:c+'40')+'">'+g+'</button>';
 });
 
-// Botones de modo
-let modeBtns='';
-Object.entries(MODES).forEach(([key,m])=>{
-const isActive=this.selectedMode===key;
-const cls=isActive?'ring-2 ring-white':'opacity-60';
-modeBtns+='<button onclick="app.selectMode(\''+key+'\')" class="mode-btn mode-'+key+' px-4 py-3 rounded-xl text-white '+cls+'"><div class="text-2xl">'+m.icon+'</div><div class="font-bold">'+m.name+'</div><div class="text-xs opacity-80">'+m.min+'-'+m.max+' BB</div></button>';
-});
-
-// Select alumnos
 let sOpts='<option value="">-- Alumno --</option>';
 students.forEach(s=>{sOpts+='<option value="'+s.id+'">'+s.name+' ('+formatNum(s.tokens)+' BB)</option>'});
 
-// Select tareas
-let tOpts='<option value="">-- Tarea --</option>';
-allTasks.forEach(t=>{
-const bb=this.calcBB(t.base,this.selectedMode);
-tOpts+='<option value="'+t.id+'">'+t.icon+' '+t.name+' ('+bb+' BB)</option>';
+// TAREAS FIJAS
+let fixedH='';
+FIXED_TASKS.forEach(t=>{
+fixedH+='<div class="bg-white/5 rounded-lg p-3 flex justify-between items-center card-hover"><div class="flex items-center gap-2"><span class="text-2xl">'+t.icon+'</span><span class="text-white">'+t.name+'</span></div><span class="text-green-400 font-mono font-bold">'+t.bb+' BB</span></div>';
 });
 
-// Lista tareas
-let tasksH='';
-allTasks.forEach(t=>{
-const bb=this.calcBB(t.base,this.selectedMode);
-tasksH+='<div class="bg-white/5 rounded-lg p-3 flex justify-between items-center"><div class="flex items-center gap-2"><span class="text-2xl">'+t.icon+'</span><span class="text-white text-sm">'+t.name+'</span></div><span class="text-green-400 font-mono font-bold">'+bb+'</span></div>';
+// TAREAS VARIABLES
+let varH='';
+this.getAllVariableTasks().forEach(t=>{
+varH+='<div class="bg-white/5 rounded-lg p-3 flex justify-between items-center card-hover"><div class="flex items-center gap-2"><span class="text-2xl">'+t.icon+'</span><span class="text-white">'+t.name+'</span></div><span class="text-amber-400 text-xs">🛋️🎒🧗</span></div>';
 });
 
-const selectedColor=GROUP_COLORS[this.selectedGroup]||'#9333ea';
-const m=MODES[this.selectedMode];
-
-return '<div class="space-y-6">'+
-// Guía de modos
-'<div class="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-5 border border-white/10">'+
-'<div class="flex justify-between items-center mb-4"><h3 class="text-white font-bold text-lg">🎚️ Nivel de implicación</h3><button onclick="app.openModal(\'newTask\')" class="px-4 py-2 bg-purple-500/20 text-purple-300 rounded-lg text-sm border border-purple-500/30">+ Nueva tarea</button></div>'+
-'<div class="grid grid-cols-3 gap-4 mb-4">'+modeBtns+'</div>'+
-'<div class="bg-black/30 rounded-lg p-3 text-center"><p class="text-gray-400 text-sm">'+m.icon+' <strong class="text-white">'+m.name+'</strong>: '+m.desc+'</p></div>'+
+return '<div class="flex flex-wrap gap-2 mb-4">'+groupBtns+'</div>'+
+'<div class="grid lg:grid-cols-2 gap-4">'+
+// TAREAS FIJAS
+'<div class="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-xl p-5 border border-green-500/30">'+
+'<h3 class="text-white font-bold text-lg mb-3">📋 Tareas Fijas</h3>'+
+'<p class="text-gray-400 text-sm mb-3">Valor fijo, asignación directa</p>'+
+'<div class="space-y-2 mb-4">'+fixedH+'</div>'+
+'<div class="bg-black/30 rounded-lg p-4"><label class="text-gray-300 text-sm">Alumno</label><select id="sel-s-fixed" class="w-full mt-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white">'+sOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Tarea</label><select id="sel-t-fixed" class="w-full mt-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white"><option value="">-- Tarea --</option>'+FIXED_TASKS.map(t=>'<option value="'+t.id+'">'+t.icon+' '+t.name+' ('+t.bb+' BB)</option>').join('')+'</select><button onclick="app.doAssignFixed()" class="w-full mt-4 py-3 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold">⚡ Asignar</button></div>'+
 '</div>'+
-// Grupos
-'<div class="flex flex-wrap gap-3">'+groupBtns+'</div>'+
-// Formulario
-'<div class="grid lg:grid-cols-3 gap-6">'+
-'<div class="lg:col-span-2 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/30" style="border-top:4px solid '+selectedColor+'">'+
-'<h3 class="text-white font-bold text-xl mb-4">⭐ Asignar en <span style="color:'+selectedColor+'">'+this.selectedGroup+'</span> <span class="text-2xl">'+m.icon+'</span></h3>'+
-'<div class="space-y-4">'+
-'<div><label class="block text-gray-300 text-sm mb-2">Alumno/a</label><select id="sel-s" class="w-full px-4 py-3 border border-white/10 rounded-xl text-white bg-white/5">'+sOpts+'</select></div>'+
-'<div><label class="block text-gray-300 text-sm mb-2">Tarea</label><select id="sel-t" class="w-full px-4 py-3 border border-white/10 rounded-xl text-white bg-white/5">'+tOpts+'</select></div>'+
-'<button onclick="app.doAssign()" class="w-full text-white py-4 rounded-xl font-bold text-lg" style="background:linear-gradient(135deg,'+m.color+','+selectedColor+')">'+m.icon+' Asignar</button>'+
-'</div>'+
-'</div>'+
-'<div class="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl p-5 border border-green-500/30">'+
-'<h4 class="text-white font-bold mb-3">📋 Tareas ('+m.icon+' '+m.name+')</h4>'+
-'<div class="space-y-2 max-h-80 overflow-y-auto">'+tasksH+'</div>'+
-'</div>'+
+// TAREAS VARIABLES
+'<div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-xl p-5 border border-amber-500/30">'+
+'<h3 class="text-white font-bold text-lg mb-3">🎚️ Tareas Variables</h3>'+
+'<p class="text-gray-400 text-sm mb-3">BB según nivel de implicación</p>'+
+'<div class="space-y-2 mb-4">'+varH+'</div>'+
+'<button onclick="app.openModal(\'assignVar\')" class="w-full py-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold">📝 Asignar con Formulario</button>'+
+'<button onclick="app.openModal(\'newTask\')" class="w-full mt-2 py-2 rounded-lg bg-white/10 text-gray-300 text-sm">+ Crear nueva tarea</button>'+
 '</div>'+
 '</div>';
 }
 
-// TIENDA
 shopPanel(){
 const cats=[...new Set(this.shop.map(i=>i.cat))];
-const bal=this.user.role==='student'?'<div class="bg-black/30 px-4 py-2 rounded-xl"><span class="text-white font-mono font-bold">'+formatNum(this.user.tokens)+' '+BB+'</span></div>':'';
+const bal=this.user.role==='student'?'<span class="text-white font-mono font-bold">'+formatNum(this.user.tokens)+' '+BB+'</span>':'';
 
 let catsH='';
 cats.forEach(cat=>{
 const items=this.shop.filter(i=>i.cat===cat);
 let itemsH='';
 items.forEach(item=>{
-const op=item.stock<=0?'opacity-50':'';
 let btn='';
 if(this.user.role==='student'){
-const can=item.stock>0&&this.user.tokens>=item.price;
-btn=can?'<button onclick="app.openModal(\'buy\',\''+item.id+'\')" class="px-3 py-2 bg-emerald-500/20 text-emerald-300 rounded-lg text-sm font-bold">Comprar</button>':'<span class="text-gray-500 text-xs">'+(item.stock<=0?'Agotado':'Sin saldo')+'</span>';
+const can=this.user.tokens>=item.price;
+btn=can?'<button onclick="app.openModal(\'buy\',\''+item.id+'\')" class="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded text-sm">Comprar</button>':'<span class="text-gray-500 text-xs">Sin saldo</span>';
 }
-itemsH+='<div class="bg-black/30 rounded-xl p-4 border border-white/10 card-hover '+op+'"><div class="flex items-start gap-3"><span class="text-3xl">'+item.icon+'</span><div class="flex-1"><h5 class="text-white font-semibold">'+item.name+'</h5><p class="text-gray-400 text-xs">'+item.desc+'</p><div class="flex justify-between items-center mt-2"><span class="text-emerald-300 font-mono font-bold">'+item.price+' '+BB+'</span>'+btn+'</div></div></div></div>';
+itemsH+='<div class="bg-black/30 rounded-lg p-3 card-hover"><div class="flex items-start gap-3"><span class="text-2xl">'+item.icon+'</span><div class="flex-1"><p class="text-white font-semibold">'+item.name+'</p><p class="text-gray-400 text-xs">'+item.desc+'</p><div class="flex justify-between items-center mt-2"><span class="text-emerald-300 font-mono">'+item.price+' BB</span>'+btn+'</div></div></div></div>';
 });
-catsH+='<div class="mb-6"><h4 class="text-emerald-300 font-semibold mb-3">'+cat+'</h4><div class="grid sm:grid-cols-2 gap-4">'+itemsH+'</div></div>';
+catsH+='<div class="mb-4"><h4 class="text-emerald-300 font-semibold mb-2">'+cat+'</h4><div class="grid sm:grid-cols-2 gap-3">'+itemsH+'</div></div>';
 });
 
-// Mis compras (alumno)
-let myPurchH='';
+let myP='';
 if(this.user.role==='student'){
-const myP=this.purchases.filter(p=>p.studentId===this.user.id);
-if(myP.length){
+const mp=this.purchases.filter(p=>p.studentId===this.user.id);
+if(mp.length){
 let items='';
-myP.slice(0,10).forEach(p=>{
-const stCls=p.status==='verified'?'bg-green-500/20 text-green-300':p.status==='pending'?'bg-yellow-500/20 text-yellow-300':'bg-red-500/20 text-red-300';
-const stTxt=p.status==='verified'?'✓ OK':p.status==='pending'?'⏳ Pendiente':'✗ Rechazado';
-items+='<div class="bg-black/30 rounded-lg p-3 flex justify-between items-center"><div><span class="text-xl mr-2">'+p.rewardIcon+'</span><span class="text-white">'+p.rewardName+'</span></div><span class="text-xs px-2 py-1 rounded-full '+stCls+'">'+stTxt+'</span></div>';
+mp.slice(0,5).forEach(p=>{
+const st=p.status==='verified'?'✓ OK':p.status==='pending'?'⏳':'✗';
+const stC=p.status==='verified'?'text-green-300':p.status==='pending'?'text-yellow-300':'text-red-300';
+items+='<div class="flex justify-between py-2 border-b border-white/5"><span class="text-white">'+p.rewardIcon+' '+p.rewardName+'</span><span class="'+stC+' text-sm">'+st+'</span></div>';
 });
-myPurchH='<div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-5 border border-purple-500/30"><h4 class="text-white font-bold mb-3">🧾 Mis Compras</h4><div class="space-y-2">'+items+'</div></div>';
+myP='<div class="bg-black/30 rounded-xl p-4 mt-4"><h4 class="text-white font-bold mb-2">🧾 Mis Compras</h4>'+items+'</div>';
 }
 }
 
-return '<div class="space-y-6"><div class="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-2xl p-6 border border-emerald-500/30"><div class="flex justify-between items-center mb-6"><h3 class="text-white font-bold text-2xl">🛒 Tienda</h3>'+bal+'</div>'+catsH+'</div>'+myPurchH+'</div>';
+return '<div class="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 rounded-xl p-5 border border-emerald-500/30"><div class="flex justify-between items-center mb-4"><h3 class="text-white font-bold text-xl">🛒 Tienda</h3>'+bal+'</div>'+catsH+'</div>'+myP;
 }
 
-// PANEL ALUMNO
 studentPanel(){
-const allTasks=this.getAllTasks();
-let tasksH='';
-allTasks.forEach(t=>{
-tasksH+='<div class="bg-white/5 rounded-xl p-4 border border-white/10"><div class="flex items-center gap-3"><span class="text-3xl">'+t.icon+'</span><div><p class="text-white font-semibold">'+t.name+'</p><p class="text-gray-400 text-xs">Base: '+t.base+' BB</p></div></div></div>';
-});
+let fixedH='';
+FIXED_TASKS.forEach(t=>{fixedH+='<div class="flex justify-between py-2 border-b border-white/5"><span class="text-white">'+t.icon+' '+t.name+'</span><span class="text-green-400 font-mono">'+t.bb+' BB</span></div>'});
+let varH='';
+VARIABLE_TASKS.forEach(t=>{varH+='<div class="flex justify-between py-2 border-b border-white/5"><span class="text-white">'+t.icon+' '+t.name+'</span><span class="text-amber-400 text-sm">25-200 BB</span></div>'});
 
-const myTxCount=this.txs.filter(tx=>(tx.toId===this.user.id||tx.fromId===this.user.id)&&!tx.reversed).length;
-
-return '<div class="grid md:grid-cols-2 gap-6">'+
-'<div class="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl p-6 border border-green-500/30"><h3 class="text-white font-bold text-xl mb-4">📋 Tareas que puedes hacer</h3><div class="space-y-2">'+tasksH+'</div></div>'+
-'<div class="space-y-6">'+
-'<div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-6 border border-purple-500/30"><h3 class="text-white font-bold text-xl mb-4">👤 Mi Info</h3><div class="space-y-3"><div class="flex justify-between"><span class="text-gray-400">Nick:</span><span class="text-white font-mono">'+this.user.nick+'</span></div><div class="flex justify-between"><span class="text-gray-400">Clase:</span><span class="text-white">'+this.user.class+'</span></div><div class="flex justify-between"><span class="text-gray-400">Transacciones:</span><span class="text-white">'+myTxCount+'</span></div></div></div>'+
-'<div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 rounded-2xl p-5 border border-amber-500/30"><h4 class="text-white font-bold mb-3">🎚️ Niveles de esfuerzo</h4><div class="space-y-2"><div class="flex items-center gap-2"><span class="text-2xl">🛋️</span><div><p class="text-green-400 font-bold">Sofá (25-50 BB)</p><p class="text-gray-400 text-xs">1 día · Grupo · Planifica</p></div></div><div class="flex items-center gap-2"><span class="text-2xl">🎒</span><div><p class="text-amber-400 font-bold">Mochila (75-120 BB)</p><p class="text-gray-400 text-xs">1 semana · Clase · Prepara</p></div></div><div class="flex items-center gap-2"><span class="text-2xl">🧗</span><div><p class="text-red-400 font-bold">Escalada (150-200 BB)</p><p class="text-gray-400 text-xs">1 mes · IES · Organiza</p></div></div></div></div>'+
-'</div></div>';
+return '<div class="grid md:grid-cols-2 gap-4">'+
+'<div class="bg-black/30 rounded-xl p-5"><h3 class="text-white font-bold mb-3">📋 Tareas Fijas</h3>'+fixedH+'</div>'+
+'<div class="bg-black/30 rounded-xl p-5"><h3 class="text-white font-bold mb-3">🎚️ Tareas Variables</h3>'+varH+'<div class="mt-4 p-3 bg-amber-500/10 rounded-lg text-sm"><p class="text-amber-300 font-bold mb-1">Niveles:</p><p class="text-gray-300">🛋️ Sofá: 25-50 BB</p><p class="text-gray-300">🎒 Mochila: 75-120 BB</p><p class="text-gray-300">🧗 Escalada: 150-200 BB</p></div></div>'+
+'</div>';
 }
 
 rankingPanel(){
 const ss=this.users.filter(u=>u.role==='student').sort((a,b)=>b.tokens-a.tokens);
 const pos=ss.findIndex(s=>s.id===this.user.id)+1;
 let rows='';
-ss.slice(0,50).forEach((s,i)=>{
+ss.slice(0,30).forEach((s,i)=>{
 const m=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
 const me=s.id===this.user.id;
-const c=GROUP_COLORS[s.class]||'#9333ea';
-rows+='<div class="bg-white/5 rounded-lg p-3 flex justify-between items-center '+(me?'ring-2 ring-purple-500':'')+'"><div class="flex items-center gap-3"><span class="text-xl w-10 text-center">'+m+'</span><div><p class="text-white font-semibold">'+s.name+(me?' (Tú)':'')+'</p><span class="text-xs px-2 py-0.5 rounded" style="background:'+c+'30;color:'+c+'">'+s.class+'</span></div></div><p class="text-white font-mono font-bold">'+formatNum(s.tokens)+'</p></div>';
+const c=GROUP_COLORS[s.class];
+rows+='<div class="flex justify-between items-center py-2 '+(me?'bg-purple-500/20 rounded-lg px-2':'')+'"><div class="flex items-center gap-2"><span class="w-8 text-center">'+m+'</span><span class="text-white">'+s.name+(me?' (Tú)':'')+'</span><span class="text-xs px-2 py-0.5 rounded" style="background:'+c+'30;color:'+c+'">'+s.class+'</span></div><span class="text-white font-mono">'+formatNum(s.tokens)+'</span></div>';
 });
-return '<div class="space-y-6"><div class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-2xl p-6 border border-amber-500/30"><div class="flex justify-between items-center"><div><p class="text-amber-300 text-sm">Tu posición</p><p class="text-white text-4xl font-bold">#'+pos+'</p></div><div class="text-right"><p class="text-amber-300 text-sm">De '+ss.length+'</p><p class="text-white text-2xl font-bold font-mono">'+formatNum(this.user.tokens)+' '+BB+'</p></div></div></div><div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-6 border border-purple-500/30"><h3 class="text-white font-bold text-xl mb-4">🏆 Ranking</h3><div class="space-y-2 max-h-96 overflow-y-auto">'+rows+'</div></div></div>';
+return '<div class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-xl p-5 border border-amber-500/30 mb-4"><div class="flex justify-between"><div><p class="text-amber-300 text-sm">Tu posición</p><p class="text-white text-3xl font-bold">#'+pos+'</p></div><div class="text-right"><p class="text-amber-300 text-sm">Tu saldo</p><p class="text-white text-2xl font-mono">'+formatNum(this.user.tokens)+' BB</p></div></div></div><div class="bg-black/30 rounded-xl p-5"><h3 class="text-white font-bold mb-3">🏆 Ranking</h3><div class="space-y-1">'+rows+'</div></div>';
 }
 
 historyPanel(){
 const myStudents=this.getMyStudents();
-let mt;
-if(this.user.role==='tutor'){
-mt=this.txs.filter(tx=>myStudents.some(s=>s.id===tx.toId||s.id===tx.fromId));
-}else{
-mt=this.txs.filter(tx=>tx.toId===this.user.id||tx.fromId===this.user.id);
-}
-let txH='';
-if(!mt.length){txH='<p class="text-gray-400 text-center py-8">Sin transacciones</p>';}
-else{
+let txs=this.user.role==='tutor'?this.txs.filter(tx=>myStudents.some(s=>s.id===tx.toId)):this.txs.filter(tx=>tx.toId===this.user.id||tx.fromId===this.user.id);
 let items='';
-mt.slice(0,50).forEach(tx=>{
-const isRev=tx.reversed;
-const icon=tx.taskIcon||'📥';
-const modeIcon=tx.modeIcon||'';
-const revBadge=isRev?'<span class="ml-2 px-2 py-0.5 bg-red-500/20 text-red-300 rounded text-xs">ANULADA</span>':'';
-const revBtn=this.user.role==='tutor'&&!isRev&&tx.type==='task_reward'?'<button onclick="app.openModal(\'revert\',\''+tx.id+'\')" class="px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs">↩️</button>':'';
-items+='<div class="bg-white/5 rounded-xl p-4 '+(isRev?'opacity-50':'')+'"><div class="flex justify-between items-start"><div><p class="text-white font-semibold">'+icon+' '+tx.description+' '+modeIcon+revBadge+'</p><p class="text-gray-400 text-sm">'+tx.toName+'</p><p class="text-gray-500 text-xs">'+formatDate(tx.timestamp)+'</p></div><div class="text-right"><p class="text-green-400 font-mono font-bold '+(isRev?'line-through':'')+'">+'+formatNum(tx.amount)+' '+BB+'</p>'+revBtn+'</div></div></div>';
+txs.slice(0,30).forEach(tx=>{
+const rev=tx.reversed?'opacity-50 line-through':'';
+const revBadge=tx.reversed?'<span class="text-red-400 text-xs ml-1">(anulada)</span>':'';
+const revBtn=this.user.role==='tutor'&&!tx.reversed&&tx.type!=='purchase'?'<button onclick="app.revertTx(\''+tx.id+'\')" class="text-red-400 text-xs">↩️</button>':'';
+const lvl=tx.levelIcon?'<span class="text-xs">'+tx.levelIcon+'</span>':'';
+items+='<div class="flex justify-between items-center py-2 border-b border-white/5 '+rev+'"><div><p class="text-white">'+tx.taskIcon+' '+tx.taskName+' '+lvl+revBadge+'</p><p class="text-gray-400 text-xs">'+tx.toName+' · '+formatDate(tx.timestamp)+'</p>'+(tx.detail?'<p class="text-gray-500 text-xs italic">"'+tx.detail+'"</p>':'')+'</div><div class="text-right flex items-center gap-2"><span class="text-green-400 font-mono">+'+formatNum(tx.amount)+'</span>'+revBtn+'</div></div>';
 });
-txH='<div class="space-y-3 max-h-[500px] overflow-y-auto">'+items+'</div>';
-}
-return '<div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-6 border border-purple-500/30"><div class="flex justify-between items-center mb-4"><h3 class="text-white font-bold text-xl">📜 Historial</h3><span class="text-gray-400 text-sm">'+mt.length+' tx</span></div>'+txH+'</div>';
+return '<div class="bg-black/30 rounded-xl p-5"><div class="flex justify-between mb-3"><h3 class="text-white font-bold">📜 Historial</h3><span class="text-gray-400 text-sm">'+txs.length+' tx</span></div>'+(items||'<p class="text-gray-500">Sin transacciones</p>')+'</div>';
 }
 
 modalHTML(){
-let content='';
+let c='';
 if(this.modal==='buy'){
 const r=this.shop.find(x=>x.id===this.modalData);
-if(r){
-content='<h3 class="text-white font-bold text-xl mb-2">'+r.icon+' '+r.name+'</h3><p class="text-gray-400 text-sm mb-4">'+r.desc+'</p><p class="text-emerald-300 font-mono font-bold text-2xl mb-4">'+r.price+' '+BB+'</p><div class="mb-4"><label class="block text-gray-300 text-sm mb-2">¿Qué quieres conseguir? (opcional)</label><textarea id="buy-comment" rows="3" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white" placeholder="Explica brevemente para qué lo necesitas..."></textarea></div><div class="flex gap-3"><button onclick="app.closeModal()" class="flex-1 px-4 py-3 bg-white/5 text-gray-300 rounded-xl">Cancelar</button><button onclick="app.doBuy(\''+r.id+'\')" class="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold">Comprar</button></div>';
+if(r)c='<h3 class="text-white font-bold text-xl mb-2">'+r.icon+' '+r.name+'</h3><p class="text-emerald-300 font-mono text-2xl mb-4">'+r.price+' BB</p><label class="text-gray-300 text-sm">¿Qué quieres conseguir? (opcional)</label><textarea id="buy-comment" rows="2" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="Explica brevemente..."></textarea><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doBuy(\''+r.id+'\')" class="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold">Comprar</button></div>';
 }
-}else if(this.modal==='revert'){
-const tx=this.txs.find(t=>t.id===this.modalData);
-if(tx){
-const s=this.users.find(u=>u.id===tx.toId);
-const bal=s?s.tokens:0;
-const can=bal>=tx.amount;
-content='<h3 class="text-white font-bold text-xl mb-4">↩️ Revertir</h3>'+(can?'':'<div class="bg-red-500/20 border border-red-500/30 rounded-lg p-3 mb-4 text-red-300 text-sm">Saldo insuficiente ('+formatNum(bal)+' BB)</div>')+'<div class="bg-black/30 rounded-xl p-4 mb-4"><p class="text-white">'+tx.description+'</p><p class="text-gray-400 text-sm">'+tx.toName+'</p><p class="text-red-400 font-mono font-bold text-xl">-'+formatNum(tx.amount)+' '+BB+'</p></div><div class="flex gap-3"><button onclick="app.closeModal()" class="flex-1 px-4 py-3 bg-white/5 text-gray-300 rounded-xl">Cancelar</button><button onclick="app.revertTx(\''+tx.id+'\')" class="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold" '+(can?'':'disabled')+'>Revertir</button></div>';
+else if(this.modal==='newTask'){
+c='<h3 class="text-white font-bold text-xl mb-4">➕ Nueva Tarea Variable</h3><label class="text-gray-300 text-sm">Nombre</label><input type="text" id="new-name" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="Ej: Proyecto solidario"><label class="text-gray-300 text-sm mt-3 block">Icono</label><input type="text" id="new-icon" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-2xl" placeholder="📌" maxlength="2"><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doCreateTask()" class="flex-1 py-2 bg-purple-500 text-white rounded-lg font-bold">Crear</button></div>';
 }
-}else if(this.modal==='newTask'){
-content='<h3 class="text-white font-bold text-xl mb-4">➕ Nueva Tarea</h3>'+
-'<div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4 text-sm"><p class="text-amber-300 font-bold mb-2">📏 Guía para asignar BB base:</p><table class="w-full text-xs"><tr class="text-gray-400"><th class="text-left py-1">Criterio</th><th>🛋️ Sofá</th><th>🎒 Mochila</th><th>🧗 Escalada</th></tr><tr class="text-white"><td>Tiempo</td><td class="text-center">1 día</td><td class="text-center">1 semana</td><td class="text-center">1 mes</td></tr><tr class="text-white"><td>Beneficia</td><td class="text-center">Grupo</td><td class="text-center">Clase</td><td class="text-center">IES</td></tr><tr class="text-white"><td>Esfuerzo</td><td class="text-center">Planifica</td><td class="text-center">Prepara</td><td class="text-center">Organiza</td></tr><tr class="text-white"><td>Responsab.</td><td class="text-center">Sigue</td><td class="text-center">Iniciativa</td><td class="text-center">Ejecuta</td></tr><tr class="text-amber-300 font-bold"><td>BB base</td><td class="text-center">25-50</td><td class="text-center">75-120</td><td class="text-center">150-200</td></tr></table></div>'+
-'<div class="space-y-4">'+
-'<div><label class="block text-gray-300 text-sm mb-2">Nombre de la tarea</label><input type="text" id="new-task-name" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white" placeholder="Ej: Organizar biblioteca"></div>'+
-'<div><label class="block text-gray-300 text-sm mb-2">Icono</label><input type="text" id="new-task-icon" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-2xl" placeholder="📖" maxlength="2"></div>'+
-'<div><label class="block text-gray-300 text-sm mb-2">BB base (se multiplicará según modo)</label><input type="number" id="new-task-base" min="10" max="100" class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white font-mono" placeholder="50"></div>'+
-'</div>'+
-'<div class="flex gap-3 mt-6"><button onclick="app.closeModal()" class="flex-1 px-4 py-3 bg-white/5 text-gray-300 rounded-xl">Cancelar</button><button onclick="app.doCreateTask()" class="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold">Crear</button></div>';
+else if(this.modal==='assignVar'){
+const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>a.name.localeCompare(b.name));
+let sOpts='<option value="">-- Alumno --</option>';students.forEach(s=>{sOpts+='<option value="'+s.id+'">'+s.name+'</option>'});
+let tOpts='<option value="">-- Tarea --</option>';this.getAllVariableTasks().forEach(t=>{tOpts+='<option value="'+t.id+'">'+t.icon+' '+t.name+'</option>'});
+
+const calc=this.calcLevel();
+let resultH='';
+if(calc){
+const lvl=LEVELS[calc.level];
+resultH='<div class="p-3 rounded-lg text-center" style="background:'+lvl.color+'30"><span class="text-3xl">'+lvl.icon+'</span><p class="text-white font-bold text-lg">'+lvl.name+'</p><p class="text-white text-2xl font-mono">'+calc.bb+' BB</p></div>';
+}else{
+resultH='<div class="p-3 bg-white/5 rounded-lg text-center text-gray-400">Completa los criterios</div>';
 }
-return '<div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" onclick="if(event.target===this)app.closeModal()"><div class="bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-purple-500/30 max-h-[90vh] overflow-y-auto">'+content+'</div></div>';
+
+// Criterios
+let criteriosH='';
+Object.entries(CRITERIA).forEach(([key,crit])=>{
+let optsH='';
+crit.options.forEach(opt=>{
+const active=this.varForm[key]===opt.lvl;
+const lvlC=LEVELS[opt.lvl].color;
+optsH+='<button onclick="app.setVarField(\''+key+'\',\''+opt.v+'\',\''+opt.lvl+'\')" class="opt-btn px-3 py-2 rounded-lg text-white text-sm '+(active?'active':'')+'" style="background:'+lvlC+'">'+opt.l+'</button>';
+});
+criteriosH+='<div class="mb-3"><label class="text-gray-300 text-sm block mb-1">'+crit.label+'</label><div class="flex gap-2 flex-wrap">'+optsH+'</div></div>';
+});
+
+c='<h3 class="text-white font-bold text-xl mb-4">📝 Asignar Tarea Variable</h3><div class="grid md:grid-cols-2 gap-4"><div><label class="text-gray-300 text-sm">Alumno ('+this.selectedGroup+')</label><select id="var-student" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+sOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Tarea</label><select id="var-task" onchange="app.varForm.task=this.value;app.render()" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+tOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Descripción de la actividad</label><textarea id="var-desc" rows="2" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="¿Qué hizo exactamente el alumno?">'+this.varForm.desc+'</textarea></div><div><p class="text-white font-bold mb-2">Criterios</p>'+criteriosH+resultH+'</div></div><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doAssignVar()" class="flex-1 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold"'+(calc?'':' disabled')+'>Asignar '+(calc?calc.bb+' BB':'')+'</button></div>';
+}
+return '<div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" onclick="if(event.target===this)app.closeModal()"><div class="bg-slate-900 rounded-2xl p-6 max-w-2xl w-full border border-purple-500/30 max-h-[90vh] overflow-y-auto">'+c+'</div></div>';
 }
 
 events(){
 const f=document.getElementById('login-form');
-if(f){f.onsubmit=e=>{e.preventDefault();const isS=document.getElementById('btn-s').classList.contains('bg-gradient-to-r');if(isS)this.login('student',{nick:document.getElementById('nick').value.toUpperCase(),password:document.getElementById('pass').value});else this.login('tutor',{email:document.getElementById('email').value,password:document.getElementById('pass-t').value})};}
+if(f)f.onsubmit=e=>{e.preventDefault();const isS=document.getElementById('btn-s').classList.contains('bg-gradient-to-r');if(isS)this.login('student',{nick:document.getElementById('nick').value.toUpperCase(),password:document.getElementById('pass').value});else this.login('tutor',{email:document.getElementById('email').value,password:document.getElementById('pass-t').value})};
 }
 
 switchType(type){
 const bs=document.getElementById('btn-s'),bt=document.getElementById('btn-t'),fs=document.getElementById('f-student'),ft=document.getElementById('f-tutor');
-if(type==='student'){bs.className='flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white';bt.className='flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300';fs.classList.remove('hidden');ft.classList.add('hidden');}
-else{bt.className='flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white';bs.className='flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300';ft.classList.remove('hidden');fs.classList.add('hidden');}
+if(type==='student'){bs.className='flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white';bt.className='flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300';fs.classList.remove('hidden');ft.classList.add('hidden')}
+else{bt.className='flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white';bs.className='flex-1 py-3 rounded-xl font-semibold bg-white/5 text-gray-300';ft.classList.remove('hidden');fs.classList.add('hidden')}
 }
 
-doAssign(){const sId=document.getElementById('sel-s').value,tId=document.getElementById('sel-t').value;if(!sId||!tId){alert('Selecciona alumno y tarea');return}this.assignTask(sId,tId,this.selectedMode)}
-doBuy(rId){const comment=document.getElementById('buy-comment')?.value||'';this.buyReward(rId,comment);this.closeModal()}
-doCreateTask(){const name=document.getElementById('new-task-name').value,icon=document.getElementById('new-task-icon').value||'📌',base=document.getElementById('new-task-base').value;if(!name||!base){alert('Completa nombre y BB');return}this.createCustomTask(name,icon,base)}
+doAssignFixed(){
+const sId=document.getElementById('sel-s-fixed').value;
+const tId=document.getElementById('sel-t-fixed').value;
+if(!sId||!tId){alert('Selecciona alumno y tarea');return}
+this.assignFixedTask(sId,tId);
+}
+
+doAssignVar(){
+const sId=document.getElementById('var-student').value;
+this.varForm.task=document.getElementById('var-task').value;
+this.varForm.desc=document.getElementById('var-desc').value;
+if(!sId){alert('Selecciona alumno');return}
+this.assignVariableTask(sId);
+}
+
+doBuy(rId){
+const comment=document.getElementById('buy-comment')?.value||'';
+this.buyReward(rId,comment);
+}
+
+doCreateTask(){
+const name=document.getElementById('new-name').value;
+const icon=document.getElementById('new-icon').value;
+if(!name){alert('Escribe un nombre');return}
+this.createCustomTask(name,icon);
+}
 }
 
 const app=new App();
