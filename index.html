@@ -50,6 +50,7 @@ const GROUP_COLORS={'AD-1':'#fbbf24','AD-2':'#60a5fa','DAW-1':'#34d399','AC-1':'
 
 // TAREAS FIJAS (valor fijo)
 const FIXED_TASKS=[
+{id:'f0',name:'Regalo bienvenida',icon:'🎁',bb:25,type:'fixed'},
 {id:'f1',name:'Limpiar espacios comunes',icon:'🧹',bb:50,type:'fixed'},
 {id:'f2',name:'Mediación entre compañeros',icon:'🤝',bb:200,type:'fixed'},
 {id:'f3',name:'Tutoría entre compañeros',icon:'👨‍🏫',bb:100,type:'fixed'},
@@ -254,6 +255,7 @@ const grpInfo=this.user.role==='tutor'?'<span class="text-amber-300 text-xs">'+m
 const tabs=this.user.role==='tutor'?[
 {id:'dashboard',l:'📊 Dashboard'},
 {id:'assign',l:'⭐ Asignar'},
+{id:'students',l:'👥 Alumnos'},
 {id:'shop',l:'🛒 Tienda'},
 {id:'history',l:'📜 Historial'}
 ]:[
@@ -268,6 +270,7 @@ let content='';
 switch(this.tab){
 case'dashboard':content=this.user.role==='tutor'?this.dashboardPanel():this.studentPanel();break;
 case'assign':content=this.assignPanel();break;
+case'students':content=this.studentsPanel();break;
 case'shop':content=this.shopPanel();break;
 case'ranking':content=this.rankingPanel();break;
 case'history':content=this.historyPanel();break;
@@ -331,7 +334,7 @@ groupBtns+='<button onclick="app.selectGroup(\''+g+'\')" class="px-4 py-2 rounde
 });
 
 let sOpts='<option value="">-- Alumno --</option>';
-students.forEach(s=>{sOpts+='<option value="'+s.id+'">'+s.name+' ('+formatNum(s.tokens)+' BB)</option>'});
+students.forEach(s=>{const ini=s.initials||'';const num=s.nick?s.nick.split('-').pop():'';const label=ini?(ini+' ('+num+')'):(s.name+' ('+formatNum(s.tokens)+' BB)');sOpts+='<option value="'+s.id+'">'+label+'</option>'});
 
 // TAREAS FIJAS
 let fixedH='';
@@ -363,6 +366,36 @@ return '<div class="flex flex-wrap gap-2 mb-4">'+groupBtns+'</div>'+
 '<button onclick="app.openModal(\'newTask\')" class="w-full mt-2 py-2 rounded-lg bg-white/10 text-gray-300 text-sm">+ Crear nueva tarea</button>'+
 '</div>'+
 '</div>';
+}
+
+studentsPanel(){
+const myGroups=this.getMyGroups();
+if(!this.selectedGroup)this.selectedGroup=myGroups[0];
+const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>{
+const numA=parseInt(a.nick?.split('-').pop())||0;
+const numB=parseInt(b.nick?.split('-').pop())||0;
+return numA-numB;
+});
+
+let groupBtns='';
+myGroups.forEach(g=>{
+const c=GROUP_COLORS[g];
+const active=this.selectedGroup===g;
+groupBtns+='<button onclick="app.selectGroup(\''+g+'\')" class="px-4 py-2 rounded-lg font-bold text-sm '+(active?'text-white':'text-gray-300 opacity-60')+'" style="background:'+(active?c:c+'40')+'">'+g+'</button>';
+});
+
+let rows='';
+students.forEach(s=>{
+const num=s.nick?s.nick.split('-').pop():'?';
+const ini=s.initials||'';
+rows+='<div class="bg-black/30 rounded-lg p-3 flex items-center justify-between gap-3"><div class="flex items-center gap-3"><span class="text-white font-mono text-sm w-10">'+num+'</span><input type="text" id="ini-'+s.id+'" value="'+ini+'" placeholder="Iniciales" maxlength="10" class="w-24 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm" onchange="app.saveInitials(\''+s.id+'\',this.value)"></div><div class="text-right"><span class="text-green-400 font-mono">'+formatNum(s.tokens)+' BB</span></div></div>';
+});
+
+return '<div class="space-y-4"><div class="flex flex-wrap gap-2">'+groupBtns+'</div><div class="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl p-5 border border-blue-500/30"><h3 class="text-white font-bold text-lg mb-1">👥 Alumnos de '+this.selectedGroup+'</h3><p class="text-gray-400 text-sm mb-4">Escribe las iniciales para identificar a cada alumno</p><div class="grid sm:grid-cols-2 md:grid-cols-3 gap-2">'+rows+'</div></div></div>';
+}
+
+async saveInitials(studentId,initials){
+try{await db.ref('users/'+studentId+'/initials').set(initials.toUpperCase())}catch(e){console.error(e)}
 }
 
 shopPanel(){
@@ -451,7 +484,7 @@ c='<h3 class="text-white font-bold text-xl mb-4">➕ Nueva Tarea Variable</h3><l
 }
 else if(this.modal==='assignVar'){
 const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>a.name.localeCompare(b.name));
-let sOpts='<option value="">-- Alumno --</option>';students.forEach(s=>{sOpts+='<option value="'+s.id+'">'+s.name+'</option>'});
+let sOpts='<option value="">-- Alumno --</option>';students.forEach(s=>{const ini=s.initials||'';const num=s.nick?s.nick.split('-').pop():'';const label=ini?(ini+' ('+num+')'):(s.name);sOpts+='<option value="'+s.id+'">'+label+'</option>'});
 let tOpts='<option value="">-- Tarea --</option>';this.getAllVariableTasks().forEach(t=>{tOpts+='<option value="'+t.id+'">'+t.icon+' '+t.name+'</option>'});
 
 const calc=this.calcLevel();
