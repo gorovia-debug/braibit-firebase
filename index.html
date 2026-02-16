@@ -150,7 +150,7 @@ this.tab='dashboard';this.render();
 logout(){this.user=null;this.tab='dashboard';this.selectedGroup=null;this.render()}
 setTab(t){this.tab=t;this.render()}
 selectGroup(g){this.selectedGroup=g;this.render()}
-openModal(t,d){this.modal=t;this.modalData=d||null;this.varForm={task:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};this.render()}
+openModal(t,d){this.modal=t;this.modalData=d||null;this.varForm={task:null,student:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};this.render()}
 closeModal(){this.modal=null;this.modalData=null;this.render()}
 
 // Calcular nivel y BB según criterios
@@ -324,7 +324,11 @@ return pendingH+'<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">'+
 assignPanel(){
 const myGroups=this.getMyGroups();
 if(!this.selectedGroup)this.selectedGroup=myGroups[0];
-const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>a.name.localeCompare(b.name));
+const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>{
+const numA=parseInt(a.nick?.split('-').pop())||0;
+const numB=parseInt(b.nick?.split('-').pop())||0;
+return numA-numB;
+});
 
 let groupBtns='';
 myGroups.forEach(g=>{
@@ -463,14 +467,15 @@ historyPanel(){
 const myStudents=this.getMyStudents();
 let txs=this.user.role==='tutor'?this.txs.filter(tx=>myStudents.some(s=>s.id===tx.toId)):this.txs.filter(tx=>tx.toId===this.user.id||tx.fromId===this.user.id);
 let items='';
-txs.slice(0,30).forEach(tx=>{
-const rev=tx.reversed?'opacity-50 line-through':'';
+txs.slice(0,50).forEach(tx=>{
+const rev=tx.reversed?'opacity-50':'';
 const revBadge=tx.reversed?'<span class="text-red-400 text-xs ml-1">(anulada)</span>':'';
-const revBtn=this.user.role==='tutor'&&!tx.reversed&&tx.type!=='purchase'?'<button onclick="app.revertTx(\''+tx.id+'\')" class="text-red-400 text-xs">↩️</button>':'';
+const revBtn=this.user.role==='tutor'&&!tx.reversed&&tx.type!=='purchase'?'<button onclick="app.revertTx(\''+tx.id+'\')" class="px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs hover:bg-red-500/40">↩️ Revertir</button>':'';
 const lvl=tx.levelIcon?'<span class="text-xs">'+tx.levelIcon+'</span>':'';
-items+='<div class="flex justify-between items-center py-2 border-b border-white/5 '+rev+'"><div><p class="text-white">'+tx.taskIcon+' '+tx.taskName+' '+lvl+revBadge+'</p><p class="text-gray-400 text-xs">'+tx.toName+' · '+formatDate(tx.timestamp)+'</p>'+(tx.detail?'<p class="text-gray-500 text-xs italic">"'+tx.detail+'"</p>':'')+'</div><div class="text-right flex items-center gap-2"><span class="text-green-400 font-mono">+'+formatNum(tx.amount)+'</span>'+revBtn+'</div></div>';
+const studentName=tx.toName||'';
+items+='<div class="flex justify-between items-center py-3 border-b border-white/10 '+rev+'"><div><p class="text-white '+(tx.reversed?'line-through':'')+'">'+(tx.taskIcon||'📥')+' '+(tx.taskName||tx.description||'')+' '+lvl+revBadge+'</p><p class="text-gray-400 text-sm">'+studentName+'</p><p class="text-gray-500 text-xs">'+formatDate(tx.timestamp)+'</p></div><div class="text-right flex flex-col items-end gap-1"><span class="text-green-400 font-mono font-bold '+(tx.reversed?'line-through':'')+'">+'+formatNum(tx.amount)+' BB</span>'+revBtn+'</div></div>';
 });
-return '<div class="bg-black/30 rounded-xl p-5"><div class="flex justify-between mb-3"><h3 class="text-white font-bold">📜 Historial</h3><span class="text-gray-400 text-sm">'+txs.length+' tx</span></div>'+(items||'<p class="text-gray-500">Sin transacciones</p>')+'</div>';
+return '<div class="bg-black/30 rounded-xl p-5"><div class="flex justify-between mb-3"><h3 class="text-white font-bold">📜 Historial</h3><span class="text-gray-400 text-sm">'+txs.length+' transacciones</span></div><div class="max-h-[500px] overflow-y-auto">'+(items||'<p class="text-gray-500">Sin transacciones</p>')+'</div></div>';
 }
 
 modalHTML(){
@@ -483,9 +488,13 @@ else if(this.modal==='newTask'){
 c='<h3 class="text-white font-bold text-xl mb-4">➕ Nueva Tarea Variable</h3><label class="text-gray-300 text-sm">Nombre</label><input type="text" id="new-name" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="Ej: Proyecto solidario"><label class="text-gray-300 text-sm mt-3 block">Icono</label><input type="text" id="new-icon" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-2xl" placeholder="📌" maxlength="2"><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doCreateTask()" class="flex-1 py-2 bg-purple-500 text-white rounded-lg font-bold">Crear</button></div>';
 }
 else if(this.modal==='assignVar'){
-const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>a.name.localeCompare(b.name));
-let sOpts='<option value="">-- Alumno --</option>';students.forEach(s=>{const ini=s.initials||'';const num=s.nick?s.nick.split('-').pop():'';const label=ini?(ini+' ('+num+')'):(s.name);sOpts+='<option value="'+s.id+'">'+label+'</option>'});
-let tOpts='<option value="">-- Tarea --</option>';this.getAllVariableTasks().forEach(t=>{tOpts+='<option value="'+t.id+'">'+t.icon+' '+t.name+'</option>'});
+const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>{
+const numA=parseInt(a.nick?.split('-').pop())||0;
+const numB=parseInt(b.nick?.split('-').pop())||0;
+return numA-numB;
+});
+let sOpts='<option value="">-- Alumno --</option>';students.forEach(s=>{const ini=s.initials||'';const num=s.nick?s.nick.split('-').pop():'';const label=ini?(ini+' ('+num+')'):(s.name);const sel=this.varForm.student===s.id?' selected':'';sOpts+='<option value="'+s.id+'"'+sel+'>'+label+'</option>'});
+let tOpts='<option value="">-- Tarea --</option>';this.getAllVariableTasks().forEach(t=>{const sel=this.varForm.task===t.id?' selected':'';tOpts+='<option value="'+t.id+'"'+sel+'>'+t.icon+' '+t.name+'</option>'});
 
 const calc=this.calcLevel();
 let resultH='';
@@ -508,7 +517,7 @@ optsH+='<button onclick="app.setVarField(\''+key+'\',\''+opt.v+'\',\''+opt.lvl+'
 criteriosH+='<div class="mb-3"><label class="text-gray-300 text-sm block mb-1">'+crit.label+'</label><div class="flex gap-2 flex-wrap">'+optsH+'</div></div>';
 });
 
-c='<h3 class="text-white font-bold text-xl mb-4">📝 Asignar Tarea Variable</h3><div class="grid md:grid-cols-2 gap-4"><div><label class="text-gray-300 text-sm">Alumno ('+this.selectedGroup+')</label><select id="var-student" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+sOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Tarea</label><select id="var-task" onchange="app.varForm.task=this.value;app.render()" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+tOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Descripción de la actividad</label><textarea id="var-desc" rows="2" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="¿Qué hizo exactamente el alumno?">'+this.varForm.desc+'</textarea></div><div><p class="text-white font-bold mb-2">Criterios</p>'+criteriosH+resultH+'</div></div><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doAssignVar()" class="flex-1 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold"'+(calc?'':' disabled')+'>Asignar '+(calc?calc.bb+' BB':'')+'</button></div>';
+c='<h3 class="text-white font-bold text-xl mb-4">📝 Asignar Tarea Variable</h3><div class="grid md:grid-cols-2 gap-4"><div><label class="text-gray-300 text-sm">Alumno ('+this.selectedGroup+')</label><select id="var-student" onchange="app.varForm.student=this.value" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+sOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Tarea</label><select id="var-task" onchange="app.varForm.task=this.value" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+tOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Descripción de la actividad</label><textarea id="var-desc" rows="2" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="¿Qué hizo exactamente el alumno?">'+this.varForm.desc+'</textarea></div><div><p class="text-white font-bold mb-2">Criterios</p>'+criteriosH+resultH+'</div></div><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doAssignVar()" class="flex-1 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-bold"'+(calc?'':' disabled')+'>Asignar '+(calc?calc.bb+' BB':'')+'</button></div>';
 }
 return '<div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" onclick="if(event.target===this)app.closeModal()"><div class="bg-slate-900 rounded-2xl p-6 max-w-2xl w-full border border-purple-500/30 max-h-[90vh] overflow-y-auto">'+c+'</div></div>';
 }
@@ -532,10 +541,11 @@ this.assignFixedTask(sId,tId);
 }
 
 doAssignVar(){
-const sId=document.getElementById('var-student').value;
-this.varForm.task=document.getElementById('var-task').value;
+const sId=this.varForm.student||document.getElementById('var-student').value;
+this.varForm.task=this.varForm.task||document.getElementById('var-task').value;
 this.varForm.desc=document.getElementById('var-desc').value;
 if(!sId){alert('Selecciona alumno');return}
+if(!this.varForm.task){alert('Selecciona tarea');return}
 this.assignVariableTask(sId);
 }
 
