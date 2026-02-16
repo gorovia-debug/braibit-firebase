@@ -10,6 +10,9 @@
     <style>
         @keyframes pulse-slow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-slow{animation:pulse-slow 3s ease infinite}
         @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(147,51,234,.3)}50%{box-shadow:0 0 40px rgba(147,51,234,.6)}}.animate-glow{animation:glow 2s ease infinite}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}.animate-float{animation:float 3s ease-in-out infinite}
+        @keyframes coinSpin{0%{transform:rotateY(0deg)}100%{transform:rotateY(360deg)}}.coin-spin{animation:coinSpin 2s linear infinite}
+        @keyframes slideIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}.slide-in{animation:slideIn 0.3s ease}
         ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:rgba(0,0,0,.1)}::-webkit-scrollbar-thumb{background:rgba(147,51,234,.5);border-radius:4px}
         .tab-btn{transition:all .3s}.tab-btn.active{background:linear-gradient(135deg,#9333ea,#ec4899);color:#fff}
         .modal-backdrop{background:rgba(0,0,0,.8);backdrop-filter:blur(8px)}
@@ -21,6 +24,12 @@
         .sofa{background:linear-gradient(135deg,#22c55e,#16a34a)}
         .mochila{background:linear-gradient(135deg,#f59e0b,#d97706)}
         .escalada{background:linear-gradient(135deg,#ef4444,#dc2626)}
+        .wallet-card{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);border:1px solid rgba(147,51,234,0.3);position:relative;overflow:hidden}
+        .wallet-card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:linear-gradient(45deg,transparent,rgba(255,255,255,0.03),transparent);transform:rotate(45deg)}
+        .wallet-chip{width:45px;height:35px;background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:6px;display:flex;align-items:center;justify-content:center}
+        .tx-hash{font-family:monospace;font-size:11px;color:#a78bfa;letter-spacing:0.5px}
+        .status-confirmed{color:#4ade80}.status-pending{color:#fbbf24}
+        .blockchain-bg{background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239333ea' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 min-h-screen">
@@ -107,7 +116,7 @@ constructor(){
 this.user=null;this.users=[];this.txs=[];this.purchases=[];this.shop=[];this.customTasks=[];
 this.sync='connecting';this.tab='dashboard';this.selectedGroup=null;this.modal=null;this.modalData=null;
 // Para formulario variable
-this.varForm={task:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};
+this.varForm={task:null,student:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};
 this.init();
 }
 async init(){await initData();this.listen();this.render();}
@@ -165,6 +174,13 @@ if(scores.mochila>=2)return{level:'mochila',bb:Math.round(LEVELS.mochila.min+(sc
 return{level:'sofa',bb:Math.round(LEVELS.sofa.min+scores.sofa*(LEVELS.sofa.max-LEVELS.sofa.min)/4)};
 }
 setVarField(field,value,lvl){
+// Guardar valores actuales antes de render
+const studentEl=document.getElementById('var-student');
+const taskEl=document.getElementById('var-task');
+const descEl=document.getElementById('var-desc');
+if(studentEl)this.varForm.student=studentEl.value;
+if(taskEl)this.varForm.task=taskEl.value;
+if(descEl)this.varForm.desc=descEl.value;
 this.varForm[field]=lvl;
 this.render();
 }
@@ -276,7 +292,61 @@ case'ranking':content=this.rankingPanel();break;
 case'history':content=this.historyPanel();break;
 }
 
-return '<nav class="bg-black/40 backdrop-blur-xl border-b border-purple-500/20 sticky top-0 z-50"><div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between"><div class="flex items-center gap-3"><span class="text-2xl">🪙</span><div><h1 class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">'+NAME+'</h1></div><div class="flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg ml-2"><div class="w-2 h-2 rounded-full '+syncC+'"></div></div></div><div class="flex items-center gap-3"><div class="text-right"><p class="text-white font-semibold text-sm">'+this.user.name+'</p>'+grpInfo+'</div><button onclick="app.logout()" class="px-3 py-1 bg-red-500/20 text-red-300 rounded-lg text-sm">Salir</button></div></div></nav><div class="max-w-6xl mx-auto px-4 py-4"><div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl p-5 border border-purple-500/30 mb-4 flex justify-between items-center"><div><p class="text-gray-400 text-xs">Balance</p><p class="text-3xl font-bold text-white font-mono">'+formatNum(this.user.tokens)+' <span class="text-purple-300 text-xl">'+BB+'</span></p></div><code class="text-purple-400 text-xs hidden sm:block">'+formatAddr(this.user.ethAddress)+'</code></div><div class="flex gap-2 mb-4 bg-black/20 p-1 rounded-xl">'+tabsH+'</div>'+content+'</div>'+(this.modal?this.modalHTML():'');
+return '<nav class="bg-black/40 backdrop-blur-xl border-b border-purple-500/20 sticky top-0 z-50"><div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between"><div class="flex items-center gap-3"><span class="text-2xl">🪙</span><div><h1 class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">'+NAME+'</h1></div><div class="flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg ml-2"><div class="w-2 h-2 rounded-full '+syncC+'"></div><span class="text-xs text-gray-400 ml-1">'+(this.sync==='connected'?'On-chain':'Offline')+'</span></div></div><div class="flex items-center gap-3"><div class="text-right"><p class="text-white font-semibold text-sm">'+this.user.name+'</p>'+grpInfo+'</div><button onclick="app.logout()" class="px-3 py-1 bg-red-500/20 text-red-300 rounded-lg text-sm">Salir</button></div></div></nav><div class="max-w-6xl mx-auto px-4 py-4">'+this.walletCard()+'<div class="flex gap-2 mb-4 bg-black/20 p-1 rounded-xl">'+tabsH+'</div>'+content+'</div>'+(this.modal?this.modalHTML():'');
+}
+
+walletCard(){
+// Calcular variación (últimas 24h simulada)
+const myTxs=this.txs.filter(tx=>tx.toId===this.user.id&&!tx.reversed);
+const last7=myTxs.slice(0,7);
+const recentGain=last7.reduce((a,tx)=>a+tx.amount,0);
+const variation=this.user.tokens>0?((recentGain/Math.max(this.user.tokens-recentGain,1))*100).toFixed(1):0;
+const isUp=recentGain>0;
+
+// Últimas 3 transacciones para mini-historial
+const lastTxs=myTxs.slice(0,3);
+let miniTxH='';
+lastTxs.forEach(tx=>{
+miniTxH+='<div class="flex justify-between items-center py-1 border-b border-white/5 last:border-0"><div class="flex items-center gap-2"><span class="text-sm">'+(tx.taskIcon||'📥')+'</span><span class="text-white text-xs">'+(tx.taskName||'Transacción')+'</span></div><span class="text-green-400 text-xs font-mono">+'+tx.amount+'</span></div>';
+});
+if(!miniTxH)miniTxH='<p class="text-gray-500 text-xs text-center py-2">Sin transacciones</p>';
+
+return '<div class="wallet-card rounded-2xl p-5 mb-4 animate-float">'+
+'<div class="flex justify-between items-start mb-4">'+
+'<div class="wallet-chip"><span class="text-xs font-bold text-slate-800">BB</span></div>'+
+'<div class="text-right">'+
+'<div class="flex items-center gap-1 justify-end"><div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div><span class="text-green-400 text-xs">Blockchain activa</span></div>'+
+'</div>'+
+'</div>'+
+'<div class="mb-4">'+
+'<p class="text-purple-300 text-xs mb-1">Balance Total</p>'+
+'<div class="flex items-baseline gap-2">'+
+'<span class="text-4xl font-bold text-white font-mono">'+formatNum(this.user.tokens)+'</span>'+
+'<span class="text-purple-300 text-xl font-bold">'+BB+'</span>'+
+(isUp?'<span class="text-green-400 text-sm ml-2">▲ +'+recentGain+' BB</span>':'')+ 
+'</div>'+
+'</div>'+
+'<div class="flex justify-between items-end">'+
+'<div>'+
+'<p class="text-purple-400 text-xs mb-1">Wallet Address</p>'+
+'<code class="text-purple-300 text-sm font-mono">'+formatAddr(this.user.ethAddress)+'</code>'+
+'</div>'+
+'<div class="text-right">'+
+'<p class="text-purple-400 text-xs mb-1">'+(this.user.role==='tutor'?'Red':'Clase')+'</p>'+
+'<span class="text-white text-sm">'+(this.user.role==='tutor'?'IES Braille':this.user.class)+'</span>'+
+'</div>'+
+'</div>'+
+'</div>'+
+'<div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">'+
+'<div class="bg-black/30 rounded-xl p-3 border border-purple-500/20">'+
+'<p class="text-gray-400 text-xs">Transacciones</p>'+
+'<p class="text-white text-xl font-mono">'+myTxs.length+'</p>'+
+'</div>'+
+'<div class="bg-black/30 rounded-xl p-3 border border-purple-500/20 md:col-span-2">'+
+'<p class="text-gray-400 text-xs mb-2">Últimas operaciones</p>'+
+miniTxH+
+'</div>'+
+'</div>';
 }
 
 dashboardPanel(){
@@ -467,15 +537,54 @@ historyPanel(){
 const myStudents=this.getMyStudents();
 let txs=this.user.role==='tutor'?this.txs.filter(tx=>myStudents.some(s=>s.id===tx.toId)):this.txs.filter(tx=>tx.toId===this.user.id||tx.fromId===this.user.id);
 let items='';
-txs.slice(0,50).forEach(tx=>{
+txs.slice(0,50).forEach((tx,i)=>{
 const rev=tx.reversed?'opacity-50':'';
-const revBadge=tx.reversed?'<span class="text-red-400 text-xs ml-1">(anulada)</span>':'';
+const revBadge=tx.reversed?'<span class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded ml-2">REVERTED</span>':'';
 const revBtn=this.user.role==='tutor'&&!tx.reversed&&tx.type!=='purchase'?'<button onclick="app.revertTx(\''+tx.id+'\')" class="px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs hover:bg-red-500/40">↩️ Revertir</button>':'';
-const lvl=tx.levelIcon?'<span class="text-xs">'+tx.levelIcon+'</span>':'';
+const lvl=tx.levelIcon?'<span class="text-xs ml-1">'+tx.levelIcon+'</span>':'';
 const studentName=tx.toName||'';
-items+='<div class="flex justify-between items-center py-3 border-b border-white/10 '+rev+'"><div><p class="text-white '+(tx.reversed?'line-through':'')+'">'+(tx.taskIcon||'📥')+' '+(tx.taskName||tx.description||'')+' '+lvl+revBadge+'</p><p class="text-gray-400 text-sm">'+studentName+'</p><p class="text-gray-500 text-xs">'+formatDate(tx.timestamp)+'</p></div><div class="text-right flex flex-col items-end gap-1"><span class="text-green-400 font-mono font-bold '+(tx.reversed?'line-through':'')+'">+'+formatNum(tx.amount)+' BB</span>'+revBtn+'</div></div>';
+const status=tx.reversed?'FAILED':'SUCCESS';
+const statusColor=tx.reversed?'text-red-400':'text-green-400';
+const hash=tx.hash||generateTxHash();
+items+='<div class="bg-black/20 rounded-xl p-4 mb-3 border border-purple-500/10 slide-in '+rev+'">'+
+'<div class="flex justify-between items-start mb-2">'+
+'<div class="flex items-center gap-2">'+
+'<span class="text-2xl">'+(tx.taskIcon||'📥')+'</span>'+
+'<div>'+
+'<p class="text-white font-semibold '+(tx.reversed?'line-through':'')+'">'+(tx.taskName||tx.description||'Transacción')+lvl+revBadge+'</p>'+
+'<p class="text-gray-400 text-sm">→ '+studentName+'</p>'+
+'</div>'+
+'</div>'+
+'<div class="text-right">'+
+'<p class="text-green-400 font-mono font-bold text-lg '+(tx.reversed?'line-through':'')+'">+'+formatNum(tx.amount)+' BB</p>'+
+'<span class="'+statusColor+' text-xs">● '+status+'</span>'+
+'</div>'+
+'</div>'+
+'<div class="flex justify-between items-center pt-2 border-t border-white/5">'+
+'<div>'+
+'<p class="text-gray-500 text-xs">TX Hash</p>'+
+'<code class="tx-hash">'+formatAddr(hash)+'</code>'+
+'</div>'+
+'<div class="text-right">'+
+'<p class="text-gray-500 text-xs">Timestamp</p>'+
+'<span class="text-gray-400 text-xs">'+formatDate(tx.timestamp)+'</span>'+
+'</div>'+
+(revBtn?'<div>'+revBtn+'</div>':'')+
+'</div>'+
+'</div>';
 });
-return '<div class="bg-black/30 rounded-xl p-5"><div class="flex justify-between mb-3"><h3 class="text-white font-bold">📜 Historial</h3><span class="text-gray-400 text-sm">'+txs.length+' transacciones</span></div><div class="max-h-[500px] overflow-y-auto">'+(items||'<p class="text-gray-500">Sin transacciones</p>')+'</div></div>';
+return '<div class="blockchain-bg rounded-xl p-5 border border-purple-500/20">'+
+'<div class="flex justify-between items-center mb-4">'+
+'<div>'+
+'<h3 class="text-white font-bold text-lg">🔗 Explorador de Transacciones</h3>'+
+'<p class="text-purple-400 text-xs">BraiBit Blockchain</p>'+
+'</div>'+
+'<div class="bg-green-500/20 px-3 py-1 rounded-full">'+
+'<span class="text-green-400 text-xs">'+txs.length+' bloques</span>'+
+'</div>'+
+'</div>'+
+'<div class="max-h-[500px] overflow-y-auto">'+(items||'<div class="text-center py-8"><p class="text-gray-500">No hay transacciones en la blockchain</p></div>')+'</div>'+
+'</div>';
 }
 
 modalHTML(){
