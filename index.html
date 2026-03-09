@@ -220,7 +220,7 @@ async buyReward(rId,comment){
 const r=this.shop.find(x=>x.id===rId);if(!r)return;
 if(this.user.tokens<r.price){alert('Saldo insuficiente');return}
 const p={id:'p_'+Date.now(),hash:generateTxHash(),studentId:this.user.id,studentName:this.user.name,studentClass:this.user.class,rewardId:r.id,rewardName:r.name,rewardIcon:r.icon,price:r.price,comment:comment||'',timestamp:new Date().toISOString(),status:'pending'};
-const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:'0xSHOP',fromName:this.user.name,toName:'Tienda',fromId:this.user.id,toId:'shop',amount:r.price,type:'purchase',taskIcon:r.icon,description:r.icon+' '+r.name,timestamp:new Date().toISOString(),status:'confirmed'};
+const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:this.user.ethAddress,to:'0xSHOP',fromName:this.user.name,toName:'Tienda',fromId:this.user.id,toId:'shop',amount:r.price,type:'purchase',taskIcon:r.icon,taskName:r.name,description:r.icon+' '+r.name,detail:comment||'',timestamp:new Date().toISOString(),status:'confirmed'};
 try{await db.ref('users/'+this.user.id+'/tokens').set(this.user.tokens-r.price);await db.ref('purchases/'+p.id).set(p);await db.ref('transactions/'+tx.id).set(tx);alert('✅ Compra realizada');this.closeModal()}catch(e){alert('Error');console.error(e)}
 }
 
