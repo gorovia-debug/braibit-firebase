@@ -117,6 +117,8 @@ this.user=null;this.users=[];this.txs=[];this.purchases=[];this.shop=[];this.cus
 this.sync='connecting';this.tab='dashboard';this.selectedGroup=null;this.modal=null;this.modalData=null;
 // Para formulario variable
 this.varForm={task:null,student:null,desc:'',tiempo:null,beneficio:null,esfuerzo:null,responsabilidad:null};
+// Filtro historial
+this.historyFilter={group:null,student:null};
 this.init();
 }
 async init(){await initData();this.listen();this.render();}
@@ -535,15 +537,66 @@ return '<div class="bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-
 
 historyPanel(){
 const myStudents=this.getMyStudents();
-let txs=this.user.role==='tutor'?this.txs.filter(tx=>myStudents.some(s=>s.id===tx.toId)):this.txs.filter(tx=>tx.toId===this.user.id||tx.fromId===this.user.id);
+const myGroups=this.getMyGroups();
+const isTutor=this.user.role==='tutor';
+
+// Filtros para tutores
+let filterH='';
+if(isTutor){
+// Filtro por grupo
+if(!this.historyFilter.group)this.historyFilter.group=myGroups[0];
+let groupBtns='<button onclick="app.setHistoryFilter(\'group\',null)" class="px-3 py-1 rounded-lg text-sm '+(this.historyFilter.group===null?'bg-purple-500 text-white':'bg-white/10 text-gray-400')+'">Todos</button>';
+myGroups.forEach(g=>{
+const c=GROUP_COLORS[g];
+const active=this.historyFilter.group===g;
+groupBtns+='<button onclick="app.setHistoryFilter(\'group\',\''+g+'\')" class="px-3 py-1 rounded-lg text-sm '+(active?'text-white':'text-gray-400')+'" style="background:'+(active?c:'rgba(255,255,255,0.1)')+'">'+g+'</button>';
+});
+
+// Filtro por alumno
+const studentsInGroup=this.historyFilter.group?this.getStudentsByGroup(this.historyFilter.group).sort((a,b)=>{
+const numA=parseInt(a.nick?.split('-').pop())||0;
+const numB=parseInt(b.nick?.split('-').pop())||0;
+return numA-numB;
+}):myStudents.sort((a,b)=>a.name.localeCompare(b.name));
+
+let studentOpts='<option value="">-- Todos los alumnos --</option>';
+studentsInGroup.forEach(s=>{
+const num=s.nick?s.nick.split('-').pop():'';
+const ini=s.initials||'';
+const label=ini?ini+' ('+num+')':(s.name);
+const sel=this.historyFilter.student===s.id?' selected':'';
+studentOpts+='<option value="'+s.id+'"'+sel+'>'+label+'</option>';
+});
+
+filterH='<div class="mb-4 space-y-3">'+
+'<div class="flex flex-wrap gap-2">'+groupBtns+'</div>'+
+'<select onchange="app.setHistoryFilter(\'student\',this.value)" class="w-full md:w-64 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white">'+studentOpts+'</select>'+
+'</div>';
+}
+
+// Filtrar transacciones
+let txs=[];
+if(isTutor){
+if(this.historyFilter.student){
+txs=this.txs.filter(tx=>tx.toId===this.historyFilter.student);
+}else if(this.historyFilter.group){
+const groupStudents=this.getStudentsByGroup(this.historyFilter.group);
+txs=this.txs.filter(tx=>groupStudents.some(s=>s.id===tx.toId));
+}else{
+txs=this.txs.filter(tx=>myStudents.some(s=>s.id===tx.toId));
+}
+}else{
+txs=this.txs.filter(tx=>tx.toId===this.user.id||tx.fromId===this.user.id);
+}
+
 let items='';
 txs.slice(0,50).forEach((tx,i)=>{
 const rev=tx.reversed?'opacity-50':'';
 const revBadge=tx.reversed?'<span class="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded ml-2">REVERTED</span>':'';
-const revBtn=this.user.role==='tutor'&&!tx.reversed&&tx.type!=='purchase'?'<button onclick="app.revertTx(\''+tx.id+'\')" class="px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs hover:bg-red-500/40">↩️ Revertir</button>':'';
+const revBtn=isTutor&&!tx.reversed&&tx.type!=='purchase'?'<button onclick="app.revertTx(\''+tx.id+'\')" class="px-3 py-1 bg-red-500/20 text-red-300 rounded text-sm hover:bg-red-500/40">↩️ Anular</button>':'';
 const lvl=tx.levelIcon?'<span class="text-xs ml-1">'+tx.levelIcon+'</span>':'';
 const studentName=tx.toName||'';
-const status=tx.reversed?'FAILED':'SUCCESS';
+const status=tx.reversed?'ANULADA':'CONFIRMADA';
 const statusColor=tx.reversed?'text-red-400':'text-green-400';
 const hash=tx.hash||generateTxHash();
 items+='<div class="bg-black/20 rounded-xl p-4 mb-3 border border-purple-500/10 slide-in '+rev+'">'+
@@ -573,6 +626,10 @@ items+='<div class="bg-black/20 rounded-xl p-4 mb-3 border border-purple-500/10 
 '</div>'+
 '</div>';
 });
+
+const studentInfo=this.historyFilter.student?this.users.find(u=>u.id===this.historyFilter.student):null;
+const headerInfo=studentInfo?'<div class="bg-purple-500/20 rounded-lg p-3 mb-4"><p class="text-white font-bold">'+(studentInfo.initials||studentInfo.name)+'</p><p class="text-purple-300 text-sm">'+studentInfo.nick+' · Saldo: '+formatNum(studentInfo.tokens)+' BB</p></div>':'';
+
 return '<div class="blockchain-bg rounded-xl p-5 border border-purple-500/20">'+
 '<div class="flex justify-between items-center mb-4">'+
 '<div>'+
@@ -583,8 +640,16 @@ return '<div class="blockchain-bg rounded-xl p-5 border border-purple-500/20">'+
 '<span class="text-green-400 text-xs">'+txs.length+' bloques</span>'+
 '</div>'+
 '</div>'+
-'<div class="max-h-[500px] overflow-y-auto">'+(items||'<div class="text-center py-8"><p class="text-gray-500">No hay transacciones en la blockchain</p></div>')+'</div>'+
+filterH+
+headerInfo+
+'<div class="max-h-[400px] overflow-y-auto">'+(items||'<div class="text-center py-8"><p class="text-gray-500">No hay transacciones</p></div>')+'</div>'+
 '</div>';
+}
+
+setHistoryFilter(field,value){
+this.historyFilter[field]=value||null;
+if(field==='group')this.historyFilter.student=null;
+this.render();
 }
 
 modalHTML(){
