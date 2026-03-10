@@ -487,6 +487,8 @@ let btn='';
 if(this.user.role==='student'){
 const can=this.user.tokens>=item.price;
 btn=can?'<button onclick="app.openModal(\'buy\',\''+item.id+'\')" class="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded text-sm">Comprar</button>':'<span class="text-gray-500 text-xs">Sin saldo</span>';
+}else{
+btn='<button onclick="app.openModal(\'tutorBuy\',\''+item.id+'\')" class="px-3 py-1 bg-purple-500/20 text-purple-300 rounded text-sm">Canjear para alumno</button>';
 }
 itemsH+='<div class="bg-black/30 rounded-lg p-3 card-hover"><div class="flex items-start gap-3"><span class="text-2xl">'+item.icon+'</span><div class="flex-1"><p class="text-white font-semibold">'+item.name+'</p><p class="text-gray-400 text-xs">'+item.desc+'</p><div class="flex justify-between items-center mt-2"><span class="text-emerald-300 font-mono">'+item.price+' BB</span>'+btn+'</div></div></div></div>';
 });
@@ -663,6 +665,34 @@ if(this.modal==='buy'){
 const r=this.shop.find(x=>x.id===this.modalData);
 if(r)c='<h3 class="text-white font-bold text-xl mb-2">'+r.icon+' '+r.name+'</h3><p class="text-emerald-300 font-mono text-2xl mb-4">'+r.price+' BB</p><label class="text-gray-300 text-sm">¿Qué quieres conseguir? (opcional)</label><textarea id="buy-comment" rows="2" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="Explica brevemente..."></textarea><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doBuy(\''+r.id+'\')" class="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold">Comprar</button></div>';
 }
+else if(this.modal==='tutorBuy'){
+const r=this.shop.find(x=>x.id===this.modalData);
+const myGroups=this.getMyGroups();
+if(!this.selectedGroup)this.selectedGroup=myGroups[0];
+const students=this.getStudentsByGroup(this.selectedGroup).sort((a,b)=>{
+const numA=parseInt(a.nick?.split('-').pop())||0;
+const numB=parseInt(b.nick?.split('-').pop())||0;
+return numA-numB;
+});
+
+let groupBtns='';
+myGroups.forEach(g=>{
+const col=GROUP_COLORS[g];
+const active=this.selectedGroup===g;
+groupBtns+='<button onclick="app.selectedGroup=\''+g+'\';app.render()" class="px-3 py-1 rounded-lg text-sm '+(active?'text-white':'text-gray-400')+'" style="background:'+(active?col:'rgba(255,255,255,0.1)')+'">'+g+'</button>';
+});
+
+let sOpts='<option value="">-- Selecciona alumno --</option>';
+students.forEach(s=>{
+const ini=s.initials||'';
+const num=s.nick?s.nick.split('-').pop():'';
+const label=ini?(ini+' ('+num+')'):(s.name);
+const canBuy=s.tokens>=r.price;
+sOpts+='<option value="'+s.id+'"'+(canBuy?'':' disabled')+'>'+label+' - '+s.tokens+' BB'+(canBuy?'':' (sin saldo)')+'</option>';
+});
+
+if(r)c='<h3 class="text-white font-bold text-xl mb-2">🎁 Canjear: '+r.icon+' '+r.name+'</h3><p class="text-emerald-300 font-mono text-2xl mb-4">-'+r.price+' BB</p><div class="flex flex-wrap gap-2 mb-3">'+groupBtns+'</div><label class="text-gray-300 text-sm">Alumno</label><select id="tutor-buy-student" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white">'+sOpts+'</select><label class="text-gray-300 text-sm mt-3 block">Comentario (visible en historial)</label><textarea id="tutor-buy-comment" rows="2" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="Ej: Solicitado por email para RA3"></textarea><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doTutorBuy(\''+r.id+'\')" class="flex-1 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold">Canjear</button></div>';
+}
 else if(this.modal==='newTask'){
 c='<h3 class="text-white font-bold text-xl mb-4">➕ Nueva Tarea Variable</h3><label class="text-gray-300 text-sm">Nombre</label><input type="text" id="new-name" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white" placeholder="Ej: Proyecto solidario"><label class="text-gray-300 text-sm mt-3 block">Icono</label><input type="text" id="new-icon" class="w-full mt-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-2xl" placeholder="📌" maxlength="2"><div class="flex gap-3 mt-4"><button onclick="app.closeModal()" class="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg">Cancelar</button><button onclick="app.doCreateTask()" class="flex-1 py-2 bg-purple-500 text-white rounded-lg font-bold">Crear</button></div>';
 }
@@ -732,6 +762,26 @@ this.assignVariableTask(sId);
 doBuy(rId){
 const comment=document.getElementById('buy-comment')?.value||'';
 this.buyReward(rId,comment);
+}
+
+async doTutorBuy(rId){
+const sId=document.getElementById('tutor-buy-student')?.value;
+const comment=document.getElementById('tutor-buy-comment')?.value||'';
+if(!sId){alert('Selecciona un alumno');return}
+const s=this.users.find(u=>u.id===sId);
+const r=this.shop.find(x=>x.id===rId);
+if(!s||!r)return;
+if(s.tokens<r.price){alert('El alumno no tiene saldo suficiente');return}
+
+// Crear transacción de compra
+const tx={id:'tx_'+Date.now(),hash:generateTxHash(),from:s.ethAddress,to:'0xSHOP',fromName:s.name,toName:'Tienda',fromId:s.id,toId:'shop',amount:r.price,type:'purchase',taskIcon:r.icon,taskName:r.name,description:r.icon+' '+r.name,detail:comment||'Canjeado por '+this.user.name,timestamp:new Date().toISOString(),status:'confirmed',verifiedBy:this.user.name};
+
+try{
+await db.ref('users/'+sId+'/tokens').set(s.tokens-r.price);
+await db.ref('transactions/'+tx.id).set(tx);
+alert('✅ '+r.name+' canjeado para '+(s.initials||s.name)+'. Nuevo saldo: '+(s.tokens-r.price)+' BB');
+this.closeModal();
+}catch(e){alert('Error');console.error(e)}
 }
 
 doCreateTask(){
